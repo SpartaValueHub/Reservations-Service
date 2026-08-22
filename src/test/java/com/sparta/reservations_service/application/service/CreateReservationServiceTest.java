@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -147,9 +148,15 @@ class CreateReservationServiceTest {
 
 		@Override
 		public boolean existsConfirmedByChatRoomId(String chatRoomId) {
+			return findConfirmedByChatRoomId(chatRoomId).isPresent();
+		}
+
+		@Override
+		public Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId) {
 			return reservations.stream()
-					.anyMatch(reservation -> reservation.getChatRoomId().equals(chatRoomId)
-							&& reservation.getStatus() == ReservationStatus.CONFIRMED);
+					.filter(reservation -> reservation.getChatRoomId().equals(chatRoomId)
+							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
+					.findFirst();
 		}
 
 		@Override

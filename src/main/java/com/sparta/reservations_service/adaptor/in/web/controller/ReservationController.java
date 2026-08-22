@@ -3,12 +3,15 @@ package com.sparta.reservations_service.adaptor.in.web.controller;
 import com.sparta.reservations_service.adaptor.in.web.vo.CreateReservationRequestVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.ReservationResponseVo;
 import com.sparta.reservations_service.application.port.in.CreateReservationUseCase;
+import com.sparta.reservations_service.application.port.in.GetCurrentReservationByChatRoomUseCase;
 import com.sparta.reservations_service.application.port.in.dto.CreateReservationCommandDto;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -24,6 +27,17 @@ public class ReservationController {
 	private static final String MEMBER_UUID_HEADER = "X-Member-Uuid";
 
 	private final CreateReservationUseCase createReservationUseCase;
+	private final GetCurrentReservationByChatRoomUseCase getCurrentReservationByChatRoomUseCase;
+
+	@GetMapping("/by-chat-room/{chatRoomId}")
+	public ResponseEntity<ReservationResponseVo> getCurrentReservationByChatRoom(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@PathVariable String chatRoomId
+	) {
+		return getCurrentReservationByChatRoomUseCase.get(memberUuid, chatRoomId)
+				.map(resultDto -> ResponseEntity.ok(toVo(resultDto)))
+				.orElseGet(() -> ResponseEntity.noContent().build());
+	}
 
 	@PostMapping
 	public ResponseEntity<ReservationResponseVo> createReservation(

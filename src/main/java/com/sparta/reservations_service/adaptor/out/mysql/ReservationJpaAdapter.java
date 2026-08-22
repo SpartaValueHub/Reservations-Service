@@ -9,6 +9,8 @@ import com.sparta.reservations_service.domain.model.ReservationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 // reservations JPA Adapter
 @Repository
 @RequiredArgsConstructor
@@ -23,6 +25,15 @@ public class ReservationJpaAdapter implements LoadReservationPort, SaveReservati
 			return false;
 		}
 		return reservationJpaRepository.existsByChatRoomIdAndStatus(chatRoomId, ReservationStatus.CONFIRMED);
+	}
+
+	@Override
+	public Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId) {
+		if (chatRoomId == null || chatRoomId.isBlank()) {
+			return Optional.empty();
+		}
+		return reservationJpaRepository.findByChatRoomIdAndStatus(chatRoomId, ReservationStatus.CONFIRMED)
+				.map(reservationJpaMapper::toDomain);
 	}
 
 	@Override
