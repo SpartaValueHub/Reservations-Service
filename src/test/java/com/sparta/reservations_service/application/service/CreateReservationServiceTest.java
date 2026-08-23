@@ -109,6 +109,17 @@ class CreateReservationServiceTest {
 	}
 
 	@Test
+	void create_rejectsMissingCoordinates() {
+		CreateReservationCommandDto command = command(BUYER_UUID).toBuilder()
+				.latitude(null)
+				.longitude(null)
+				.build();
+
+		assertThrows(InvalidReservationRequestException.class, () -> service.create(command));
+		assertEquals(0, store.reservations.size());
+	}
+
+	@Test
 	void create_rejectsBlankPlaceName() {
 		CreateReservationCommandDto command = command(BUYER_UUID).toBuilder()
 				.placeName("  ")

@@ -149,11 +149,8 @@ public class CreateReservationService implements CreateReservationUseCase {
 	}
 
 	private Coordinate requireCoordinate(Double latitude, Double longitude) {
-		if (latitude == null && longitude == null) {
-			return new Coordinate(null, null);
-		}
 		if (latitude == null || longitude == null) {
-			throw new InvalidReservationRequestException("latitude와 longitude는 함께 보내야 합니다.");
+			throw new InvalidReservationRequestException("latitude와 longitude는 필수입니다.");
 		}
 		if (latitude < -90 || latitude > 90) {
 			throw new InvalidReservationRequestException("latitude 범위가 올바르지 않습니다.");
