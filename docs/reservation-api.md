@@ -5,8 +5,8 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 1차 범위: 등록, 채팅방 현재 예약, 내 목록, 단건, 수정, 취소.  
 채팅 `RESERVATION` 말풍선 삽입, 게시글 `tradeStatus` 연동, Chat·상품 HTTP 조회는 하지 않습니다.
 
-구현됨: `POST /api/v1/reservations`, `GET /api/v1/reservations/by-chat-room/{chatRoomId}`, `GET /api/v1/reservations/me`  
-미구현: `GET /{reservationId}`, `PATCH /{reservationId}`, `DELETE /{reservationId}`
+구현됨: `POST /api/v1/reservations`, `GET /api/v1/reservations/by-chat-room/{chatRoomId}`, `GET /api/v1/reservations/me`, `GET /api/v1/reservations/{reservationId}`, `PATCH /api/v1/reservations/{reservationId}`  
+미구현: `DELETE /{reservationId}`
 
 공통 Error Response:
 
@@ -318,7 +318,7 @@ Query
 
 ## 거래 예약 상세
 
-미구현.
+구현됨.
 
 ### Summary
 
@@ -363,7 +363,7 @@ Path
 
 ## 거래 예약 수정
 
-미구현.
+구현됨.
 
 ### Summary
 
@@ -487,5 +487,5 @@ GET /api/v1/chat/rooms/{roomId}/messages
 
 예약하기: `POST /api/v1/reservations` → 패널은 201 바디로 채움. `placeName`·`latitude`·`longitude` 필수  
 목록 카드: `GET /api/v1/reservations/me` → `chatRoomId`로 채팅 이동  
-수정: `PATCH /api/v1/reservations/{reservationId}` (미구현)  
+수정: `PATCH /api/v1/reservations/{reservationId}`  
 취소: `DELETE /api/v1/reservations/{reservationId}` → 현재 예약은 204 (미구현)

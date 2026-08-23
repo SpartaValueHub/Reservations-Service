@@ -1,5 +1,6 @@
 package com.sparta.reservations_service.domain.model;
 
+import com.sparta.reservations_service.domain.exception.ReservationNotConfirmedException;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -157,5 +158,37 @@ public class Reservation {
 
 	public boolean isParty(String memberUuid) {
 		return buyerUuid.equals(memberUuid) || sellerUuid.equals(memberUuid);
+	}
+
+	// 같은 행의 일시·장소만 바꾼다. CANCELED는 수정 불가
+	public Reservation updateMeeting(
+			Instant scheduledAt,
+			String placeName,
+			String address,
+			Double latitude,
+			Double longitude
+	) {
+		if (status != ReservationStatus.CONFIRMED) {
+			throw new ReservationNotConfirmedException();
+		}
+		return Reservation.builder()
+				.reservationId(reservationId)
+				.reservationUuid(reservationUuid)
+				.productPostUuid(productPostUuid)
+				.chatRoomId(chatRoomId)
+				.buyerUuid(buyerUuid)
+				.sellerUuid(sellerUuid)
+				.scheduledAt(scheduledAt)
+				.placeName(placeName)
+				.address(address)
+				.latitude(latitude)
+				.longitude(longitude)
+				.status(status)
+				.createdBy(createdBy)
+				.canceledBy(canceledBy)
+				.canceledAt(canceledAt)
+				.createdAt(createdAt)
+				.updatedAt(Instant.now())
+				.build();
 	}
 }

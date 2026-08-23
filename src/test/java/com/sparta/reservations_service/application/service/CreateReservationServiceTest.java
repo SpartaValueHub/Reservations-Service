@@ -181,6 +181,11 @@ class CreateReservationServiceTest {
 		}
 
 		@Override
+		public Optional<Reservation> findByReservationUuid(String reservationUuid) {
+			return Optional.empty();
+		}
+
+		@Override
 		public Reservation save(Reservation reservation) {
 			Reservation persisted = Reservation.restore(
 					nextId++,

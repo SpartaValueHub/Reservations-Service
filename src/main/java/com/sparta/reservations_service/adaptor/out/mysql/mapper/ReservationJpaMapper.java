@@ -12,6 +12,7 @@ public class ReservationJpaMapper {
 
 	public ReservationEntity toEntity(Reservation reservation) {
 		return ReservationEntity.builder()
+				.reservationId(reservation.getReservationId())
 				.reservationUuid(reservation.getReservationUuid())
 				.productPostUuid(reservation.getProductPostUuid())
 				.chatRoomId(reservation.getChatRoomId())
