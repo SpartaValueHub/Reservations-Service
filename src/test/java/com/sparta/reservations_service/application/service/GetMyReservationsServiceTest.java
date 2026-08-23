@@ -244,5 +244,10 @@ class GetMyReservationsServiceTest {
 					.sorted(Comparator.comparing(Reservation::getUpdatedAt).reversed())
 					.toList();
 		}
+
+		@Override
+		public Optional<Reservation> findByReservationUuid(String reservationUuid) {
+			return Optional.empty();
+		}
 	}
 }

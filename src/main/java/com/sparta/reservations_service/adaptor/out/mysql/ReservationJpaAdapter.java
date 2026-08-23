@@ -38,6 +38,15 @@ public class ReservationJpaAdapter implements LoadReservationPort, SaveReservati
 	}
 
 	@Override
+	public Optional<Reservation> findByReservationUuid(String reservationUuid) {
+		if (reservationUuid == null || reservationUuid.isBlank()) {
+			return Optional.empty();
+		}
+		return reservationJpaRepository.findByReservationUuid(reservationUuid)
+				.map(reservationJpaMapper::toDomain);
+	}
+
+	@Override
 	public List<Reservation> findByPartyMemberUuid(String memberUuid) {
 		if (memberUuid == null || memberUuid.isBlank()) {
 			return List.of();

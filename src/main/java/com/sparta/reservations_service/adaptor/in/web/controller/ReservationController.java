@@ -4,18 +4,23 @@ import com.sparta.reservations_service.adaptor.in.web.vo.CreateReservationReques
 import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationItemVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationListResponseVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.ReservationResponseVo;
+import com.sparta.reservations_service.adaptor.in.web.vo.UpdateReservationRequestVo;
 import com.sparta.reservations_service.application.port.in.CreateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.GetCurrentReservationByChatRoomUseCase;
 import com.sparta.reservations_service.application.port.in.GetMyReservationsUseCase;
+import com.sparta.reservations_service.application.port.in.GetReservationUseCase;
+import com.sparta.reservations_service.application.port.in.UpdateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.dto.CreateReservationCommandDto;
 import com.sparta.reservations_service.application.port.in.dto.MyReservationItemDto;
 import com.sparta.reservations_service.application.port.in.dto.MyReservationListResultDto;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
+import com.sparta.reservations_service.application.port.in.dto.UpdateReservationCommandDto;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +40,8 @@ public class ReservationController {
 	private final CreateReservationUseCase createReservationUseCase;
 	private final GetCurrentReservationByChatRoomUseCase getCurrentReservationByChatRoomUseCase;
 	private final GetMyReservationsUseCase getMyReservationsUseCase;
+	private final GetReservationUseCase getReservationUseCase;
+	private final UpdateReservationUseCase updateReservationUseCase;
 
 	@GetMapping("/me")
 	public ResponseEntity<MyReservationListResponseVo> getMyReservations(
@@ -55,6 +62,28 @@ public class ReservationController {
 				.orElseGet(() -> ResponseEntity.noContent().build());
 	}
 
+	@GetMapping("/{reservationId}")
+	public ResponseEntity<ReservationResponseVo> getReservation(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@PathVariable String reservationId
+	) {
+		ReservationDetailResultDto resultDto = getReservationUseCase.get(memberUuid, reservationId);
+		return ResponseEntity.ok(toVo(resultDto));
+	}
+
+	@PatchMapping("/{reservationId}")
+	public ResponseEntity<ReservationResponseVo> updateReservation(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@PathVariable String reservationId,
+			@RequestBody(required = false) UpdateReservationRequestVo requestVo
+	) {
+		if (requestVo == null) {
+			throw new InvalidReservationRequestException("요청 본문이 필요합니다.");
+		}
+		ReservationDetailResultDto resultDto = updateReservationUseCase.update(toUpdateCommand(memberUuid, reservationId, requestVo));
+		return ResponseEntity.ok(toVo(resultDto));
+	}
+
 	@PostMapping
 	public ResponseEntity<ReservationResponseVo> createReservation(
 			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
@@ -65,6 +94,23 @@ public class ReservationController {
 		}
 		ReservationDetailResultDto resultDto = createReservationUseCase.create(toCommand(memberUuid, requestVo));
 		return ResponseEntity.status(HttpStatus.CREATED).body(toVo(resultDto));
+	}
+
+	private UpdateReservationCommandDto toUpdateCommand(
+			String memberUuid,
+			String reservationId,
+			UpdateReservationRequestVo requestVo
+	) {
+		return UpdateReservationCommandDto.builder()
+				.memberUuid(memberUuid)
+				.reservationId(reservationId)
+				.scheduledAt(requestVo.getScheduledAt())
+				.placeName(requestVo.getPlaceName())
+				.address(requestVo.getAddress())
+				.addressSpecified(requestVo.isAddressSpecified())
+				.latitude(requestVo.getLatitude())
+				.longitude(requestVo.getLongitude())
+				.build();
 	}
 
 	private CreateReservationCommandDto toCommand(String memberUuid, CreateReservationRequestVo requestVo) {

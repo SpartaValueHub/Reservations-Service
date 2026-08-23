@@ -90,6 +90,7 @@ public class ReservationEntity {
 
 	@Builder
 	private ReservationEntity(
+			Long reservationId,
 			String reservationUuid,
 			String productPostUuid,
 			String chatRoomId,
@@ -107,6 +108,7 @@ public class ReservationEntity {
 			Instant createdAt,
 			Instant updatedAt
 	) {
+		this.reservationId = reservationId;
 		this.reservationUuid = reservationUuid;
 		this.productPostUuid = productPostUuid;
 		this.chatRoomId = chatRoomId;

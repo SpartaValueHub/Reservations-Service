@@ -13,6 +13,9 @@ public interface LoadReservationPort {
 
 	Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId);
 
+	// reservation_uuid로 단건 조회
+	Optional<Reservation> findByReservationUuid(String reservationUuid);
+
 	// 당사자(구매자 또는 판매자) 예약. updatedAt desc
 	List<Reservation> findByPartyMemberUuid(String memberUuid);
 
