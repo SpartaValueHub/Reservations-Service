@@ -171,6 +171,16 @@ class CreateReservationServiceTest {
 		}
 
 		@Override
+		public List<Reservation> findByPartyMemberUuid(String memberUuid) {
+			return List.of();
+		}
+
+		@Override
+		public List<Reservation> findByPartyMemberUuidAndStatus(String memberUuid, ReservationStatus status) {
+			return List.of();
+		}
+
+		@Override
 		public Reservation save(Reservation reservation) {
 			Reservation persisted = Reservation.restore(
 					nextId++,

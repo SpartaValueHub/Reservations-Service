@@ -1,10 +1,15 @@
 package com.sparta.reservations_service.adaptor.in.web.controller;
 
 import com.sparta.reservations_service.adaptor.in.web.vo.CreateReservationRequestVo;
+import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationItemVo;
+import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationListResponseVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.ReservationResponseVo;
 import com.sparta.reservations_service.application.port.in.CreateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.GetCurrentReservationByChatRoomUseCase;
+import com.sparta.reservations_service.application.port.in.GetMyReservationsUseCase;
 import com.sparta.reservations_service.application.port.in.dto.CreateReservationCommandDto;
+import com.sparta.reservations_service.application.port.in.dto.MyReservationItemDto;
+import com.sparta.reservations_service.application.port.in.dto.MyReservationListResultDto;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
@@ -28,6 +34,16 @@ public class ReservationController {
 
 	private final CreateReservationUseCase createReservationUseCase;
 	private final GetCurrentReservationByChatRoomUseCase getCurrentReservationByChatRoomUseCase;
+	private final GetMyReservationsUseCase getMyReservationsUseCase;
+
+	@GetMapping("/me")
+	public ResponseEntity<MyReservationListResponseVo> getMyReservations(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@RequestParam(value = "status", required = false) String status
+	) {
+		MyReservationListResultDto resultDto = getMyReservationsUseCase.get(memberUuid, status);
+		return ResponseEntity.ok(toListVo(resultDto));
+	}
 
 	@GetMapping("/by-chat-room/{chatRoomId}")
 	public ResponseEntity<ReservationResponseVo> getCurrentReservationByChatRoom(
@@ -84,6 +100,23 @@ public class ReservationController {
 				.canceledAt(resultDto.getCanceledAt())
 				.createdAt(resultDto.getCreatedAt())
 				.updatedAt(resultDto.getUpdatedAt())
+				.build();
+	}
+
+	private MyReservationListResponseVo toListVo(MyReservationListResultDto resultDto) {
+		return MyReservationListResponseVo.builder()
+				.reservations(resultDto.getReservations().stream().map(this::toItemVo).toList())
+				.build();
+	}
+
+	private MyReservationItemVo toItemVo(MyReservationItemDto itemDto) {
+		return MyReservationItemVo.builder()
+				.reservationId(itemDto.getReservationId())
+				.chatRoomId(itemDto.getChatRoomId())
+				.productPostUuid(itemDto.getProductPostUuid())
+				.scheduledAt(itemDto.getScheduledAt())
+				.placeName(itemDto.getPlaceName())
+				.status(itemDto.getStatus())
 				.build();
 	}
 }
