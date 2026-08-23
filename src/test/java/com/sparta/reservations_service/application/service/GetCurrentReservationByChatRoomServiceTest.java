@@ -165,5 +165,15 @@ class GetCurrentReservationByChatRoomServiceTest {
 							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
 					.findFirst();
 		}
+
+		@Override
+		public List<Reservation> findByPartyMemberUuid(String memberUuid) {
+			return List.of();
+		}
+
+		@Override
+		public List<Reservation> findByPartyMemberUuidAndStatus(String memberUuid, ReservationStatus status) {
+			return List.of();
+		}
 	}
 }
