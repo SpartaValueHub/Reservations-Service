@@ -63,10 +63,10 @@ public class ReservationEntity {
 	@Column(name = "address", length = 255)
 	private String address;
 
-	@Column(name = "latitude", precision = 10, scale = 7)
+	@Column(name = "latitude", nullable = false, precision = 10, scale = 7)
 	private BigDecimal latitude;
 
-	@Column(name = "longitude", precision = 10, scale = 7)
+	@Column(name = "longitude", nullable = false, precision = 10, scale = 7)
 	private BigDecimal longitude;
 
 	@Enumerated(EnumType.STRING)
