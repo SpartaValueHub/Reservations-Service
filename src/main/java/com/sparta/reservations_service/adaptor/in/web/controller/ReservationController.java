@@ -5,6 +5,7 @@ import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationItemVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationListResponseVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.ReservationResponseVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.UpdateReservationRequestVo;
+import com.sparta.reservations_service.application.port.in.CancelReservationUseCase;
 import com.sparta.reservations_service.application.port.in.CreateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.GetCurrentReservationByChatRoomUseCase;
 import com.sparta.reservations_service.application.port.in.GetMyReservationsUseCase;
@@ -19,6 +20,7 @@ import com.sparta.reservations_service.domain.exception.InvalidReservationReques
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,6 +44,7 @@ public class ReservationController {
 	private final GetMyReservationsUseCase getMyReservationsUseCase;
 	private final GetReservationUseCase getReservationUseCase;
 	private final UpdateReservationUseCase updateReservationUseCase;
+	private final CancelReservationUseCase cancelReservationUseCase;
 
 	@GetMapping("/me")
 	public ResponseEntity<MyReservationListResponseVo> getMyReservations(
@@ -81,6 +84,15 @@ public class ReservationController {
 			throw new InvalidReservationRequestException("요청 본문이 필요합니다.");
 		}
 		ReservationDetailResultDto resultDto = updateReservationUseCase.update(toUpdateCommand(memberUuid, reservationId, requestVo));
+		return ResponseEntity.ok(toVo(resultDto));
+	}
+
+	@DeleteMapping("/{reservationId}")
+	public ResponseEntity<ReservationResponseVo> cancelReservation(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@PathVariable String reservationId
+	) {
+		ReservationDetailResultDto resultDto = cancelReservationUseCase.cancel(memberUuid, reservationId);
 		return ResponseEntity.ok(toVo(resultDto));
 	}
 
