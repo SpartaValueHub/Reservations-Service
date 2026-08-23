@@ -1,5 +1,6 @@
 package com.sparta.reservations_service.domain.model;
 
+import com.sparta.reservations_service.domain.exception.ReservationAlreadyCanceledException;
 import com.sparta.reservations_service.domain.exception.ReservationNotConfirmedException;
 import lombok.Builder;
 import lombok.Getter;
@@ -189,6 +190,33 @@ public class Reservation {
 				.canceledAt(canceledAt)
 				.createdAt(createdAt)
 				.updatedAt(Instant.now())
+				.build();
+	}
+
+	// 행은 남기고 CANCELED로 바꾼다. 이미 취소면 거부
+	public Reservation cancel(String memberUuid) {
+		if (status == ReservationStatus.CANCELED) {
+			throw new ReservationAlreadyCanceledException();
+		}
+		Instant now = Instant.now();
+		return Reservation.builder()
+				.reservationId(reservationId)
+				.reservationUuid(reservationUuid)
+				.productPostUuid(productPostUuid)
+				.chatRoomId(chatRoomId)
+				.buyerUuid(buyerUuid)
+				.sellerUuid(sellerUuid)
+				.scheduledAt(scheduledAt)
+				.placeName(placeName)
+				.address(address)
+				.latitude(latitude)
+				.longitude(longitude)
+				.status(ReservationStatus.CANCELED)
+				.createdBy(createdBy)
+				.canceledBy(memberUuid)
+				.canceledAt(now)
+				.createdAt(createdAt)
+				.updatedAt(now)
 				.build();
 	}
 }
