@@ -4,6 +4,7 @@ import com.sparta.reservations_service.application.port.in.CreateReservationUseC
 import com.sparta.reservations_service.application.port.in.dto.CreateReservationCommandDto;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
 import com.sparta.reservations_service.application.port.out.LoadReservationPort;
+import com.sparta.reservations_service.application.port.out.PublishReservationEventPort;
 import com.sparta.reservations_service.application.port.out.SaveReservationPort;
 import com.sparta.reservations_service.domain.exception.CannotReserveWithSelfException;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
@@ -29,6 +30,8 @@ public class CreateReservationService implements CreateReservationUseCase {
 	private final LoadReservationPort loadReservationPort;
 	// 신규 예약 저장
 	private final SaveReservationPort saveReservationPort;
+	// 커밋 후 reservation.events CREATED
+	private final PublishReservationEventPort publishReservationEventPort;
 
 	@Override
 	@Transactional
@@ -70,6 +73,7 @@ public class CreateReservationService implements CreateReservationUseCase {
 				coordinate.longitude,
 				memberUuid
 		));
+		publishReservationEventPort.publishCreated(saved);
 		return ReservationDetailResultDto.from(saved);
 	}
 
