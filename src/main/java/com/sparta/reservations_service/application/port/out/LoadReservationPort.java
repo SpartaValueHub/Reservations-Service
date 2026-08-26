@@ -13,6 +13,10 @@ public interface LoadReservationPort {
 
 	Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId);
 
+	boolean existsConfirmedByProductPostUuid(String productPostUuid);
+
+	Optional<Reservation> findConfirmedByProductPostUuid(String productPostUuid);
+
 	// reservation_uuid로 단건 조회
 	Optional<Reservation> findByReservationUuid(String reservationUuid);
 

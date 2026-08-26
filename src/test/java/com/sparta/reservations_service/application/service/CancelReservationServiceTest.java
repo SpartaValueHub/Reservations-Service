@@ -174,6 +174,16 @@ class CancelReservationServiceTest {
 		}
 
 		@Override
+		public boolean existsConfirmedByProductPostUuid(String productPostUuid) {
+			return false;
+		}
+
+		@Override
+		public Optional<Reservation> findConfirmedByProductPostUuid(String productPostUuid) {
+			return Optional.empty();
+		}
+
+		@Override
 		public Optional<Reservation> findByReservationUuid(String reservationUuid) {
 			return reservations.stream()
 					.filter(reservation -> reservation.getReservationUuid().equals(reservationUuid))

@@ -30,7 +30,9 @@ class CreateReservationServiceTest {
 	private static final String SELLER_UUID = "33333333-3333-4333-8333-333333333333";
 	private static final String OTHER_UUID = "55555555-5555-4555-8555-555555555555";
 	private static final String PRODUCT_POST_UUID = "11111111-1111-4111-8111-111111111111";
+	private static final String OTHER_PRODUCT_POST_UUID = "66666666-6666-4666-8666-666666666666";
 	private static final String CHAT_ROOM_ID = "67a1c2d3e4f5a6b7c8d9e0f1";
+	private static final String OTHER_CHAT_ROOM_ID = "67a1c2d3e4f5a6b7c8d9e0f2";
 	private static final Instant SCHEDULED_AT = Instant.parse("2026-08-31T10:10:00Z");
 
 	private InMemoryReservationStore store;
@@ -106,6 +108,47 @@ class CreateReservationServiceTest {
 	}
 
 	@Test
+	void create_rejectsWhenOtherRoomAlreadyConfirmedForSameProduct() {
+		store.save(Reservation.create(
+				PRODUCT_POST_UUID,
+				OTHER_CHAT_ROOM_ID,
+				BUYER_UUID,
+				SELLER_UUID,
+				SCHEDULED_AT,
+				"해동병원 앞",
+				null,
+				35.115,
+				129.042,
+				SELLER_UUID
+		));
+
+		assertThrows(ReservationAlreadyConfirmedException.class, () -> service.create(command(SELLER_UUID)));
+		assertEquals(1, store.reservations.size());
+	}
+
+	@Test
+	void create_allowsWhenOtherProductAlreadyConfirmed() {
+		store.save(Reservation.create(
+				OTHER_PRODUCT_POST_UUID,
+				OTHER_CHAT_ROOM_ID,
+				BUYER_UUID,
+				SELLER_UUID,
+				SCHEDULED_AT,
+				"해동병원 앞",
+				null,
+				35.115,
+				129.042,
+				SELLER_UUID
+		));
+
+		ReservationDetailResultDto result = service.create(command(SELLER_UUID));
+
+		assertEquals(PRODUCT_POST_UUID, result.getProductPostUuid());
+		assertEquals(CHAT_ROOM_ID, result.getChatRoomId());
+		assertEquals(2, store.reservations.size());
+	}
+
+	@Test
 	void create_rejectsPartialCoordinates() {
 		CreateReservationCommandDto command = command(SELLER_UUID).toBuilder()
 				.longitude(null)
@@ -172,6 +215,22 @@ class CreateReservationServiceTest {
 		public Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId) {
 			return reservations.stream()
 					.filter(reservation -> reservation.getChatRoomId().equals(chatRoomId)
+							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
+					.findFirst();
+		}
+
+		@Override
+		public boolean existsConfirmedByProductPostUuid(String productPostUuid) {
+			return findConfirmedByProductPostUuid(productPostUuid).isPresent();
+		}
+
+		@Override
+		public Optional<Reservation> findConfirmedByProductPostUuid(String productPostUuid) {
+			if (productPostUuid == null || productPostUuid.isBlank()) {
+				return Optional.empty();
+			}
+			return reservations.stream()
+					.filter(reservation -> reservation.getProductPostUuid().equals(productPostUuid)
 							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
 					.findFirst();
 		}

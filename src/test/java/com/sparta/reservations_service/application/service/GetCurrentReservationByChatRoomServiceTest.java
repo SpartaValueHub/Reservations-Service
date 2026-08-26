@@ -25,8 +25,10 @@ class GetCurrentReservationByChatRoomServiceTest {
 	private static final String BUYER_UUID = "22222222-2222-4222-8222-222222222222";
 	private static final String SELLER_UUID = "33333333-3333-4333-8333-333333333333";
 	private static final String OTHER_UUID = "55555555-5555-4555-8555-555555555555";
+	private static final String OTHER_BUYER_UUID = "77777777-7777-4777-8777-777777777777";
 	private static final String PRODUCT_POST_UUID = "11111111-1111-4111-8111-111111111111";
 	private static final String CHAT_ROOM_ID = "67a1c2d3e4f5a6b7c8d9e0f1";
+	private static final String OTHER_CHAT_ROOM_ID = "67a1c2d3e4f5a6b7c8d9e0f2";
 	private static final Instant SCHEDULED_AT = Instant.parse("2026-08-31T10:10:00Z");
 
 	private InMemoryReservationStore store;
@@ -84,6 +86,40 @@ class GetCurrentReservationByChatRoomServiceTest {
 	@Test
 	void get_rejectsInvalidChatRoomId() {
 		assertThrows(InvalidReservationRequestException.class, () -> service.get(BUYER_UUID, "not-a-mongo-id"));
+	}
+
+	@Test
+	void get_returnsProductConfirmedForSellerInOtherRoom() {
+		store.add(confirmed());
+
+		ReservationDetailResultDto result = service.get(SELLER_UUID, OTHER_CHAT_ROOM_ID, PRODUCT_POST_UUID)
+				.orElseThrow();
+
+		assertEquals(CHAT_ROOM_ID, result.getChatRoomId());
+		assertEquals(PRODUCT_POST_UUID, result.getProductPostUuid());
+		assertEquals(ReservationStatus.CONFIRMED, result.getStatus());
+	}
+
+	@Test
+	void get_returnsEmptyForOtherBuyerWhenProductConfirmedInAnotherRoom() {
+		store.add(confirmed());
+
+		assertTrue(service.get(OTHER_BUYER_UUID, OTHER_CHAT_ROOM_ID, PRODUCT_POST_UUID).isEmpty());
+	}
+
+	@Test
+	void get_returnsEmptyWhenProductParamMissingEvenIfOtherRoomConfirmed() {
+		store.add(confirmed());
+
+		assertTrue(service.get(SELLER_UUID, OTHER_CHAT_ROOM_ID).isEmpty());
+	}
+
+	@Test
+	void get_rejectsInvalidProductPostUuid() {
+		assertThrows(
+				InvalidReservationRequestException.class,
+				() -> service.get(SELLER_UUID, OTHER_CHAT_ROOM_ID, "not-a-uuid")
+		);
 	}
 
 	private Reservation confirmed() {
@@ -162,6 +198,22 @@ class GetCurrentReservationByChatRoomServiceTest {
 		public Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId) {
 			return reservations.stream()
 					.filter(reservation -> reservation.getChatRoomId().equals(chatRoomId)
+							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
+					.findFirst();
+		}
+
+		@Override
+		public boolean existsConfirmedByProductPostUuid(String productPostUuid) {
+			return findConfirmedByProductPostUuid(productPostUuid).isPresent();
+		}
+
+		@Override
+		public Optional<Reservation> findConfirmedByProductPostUuid(String productPostUuid) {
+			if (productPostUuid == null || productPostUuid.isBlank()) {
+				return Optional.empty();
+			}
+			return reservations.stream()
+					.filter(reservation -> reservation.getProductPostUuid().equals(productPostUuid)
 							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
 					.findFirst();
 		}

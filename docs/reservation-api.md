@@ -30,9 +30,10 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 - 조회는 구매자와 판매자 모두 할 수 있습니다. 호출자는 Gateway `X-Member-Uuid`이며, 그 사람이 `buyerUuid` 또는 `sellerUuid`여야 합니다.
 - 등록·수정·취소는 **판매자만** 할 수 있습니다. 호출자가 요청/저장값의 `sellerUuid`와 같아야 합니다. 채팅방 상세 `GET /api/v1/chat/rooms/{roomId}`의 `seller.memberUuid`가 이 기준입니다.
 - 채팅방마다 `CONFIRMED` 예약은 최대 1건입니다.
+- 상품(`productPostUuid`)마다 `CONFIRMED` 예약도 최대 1건입니다. 채팅방이 달라도 같은 상품이면 추가 등록은 409입니다. `CANCELED`는 여러 건 둘 수 있습니다.
 - 취소는 행을 삭제하지 않습니다. `status`를 `CANCELED`로 바꿉니다. `deleted_at`은 없습니다.
 - 취소 후 다시 예약하면 새 행을 INSERT 합니다. 취소된 행을 `CONFIRMED`로 되돌리지 않습니다.
-- 오른쪽 패널은 그 방의 `CONFIRMED` 한 건만 봅니다. 없으면 빈 상태(예약하기)입니다.
+- 오른쪽 패널은 그 방의 `CONFIRMED` 한 건을 먼저 봅니다. 없고 쿼리에 `productPostUuid`가 있으면, 그 상품의 `CONFIRMED` 예약을 당사자(판매자 또는 그 예약의 구매자)에게만 보여 줍니다. 다른 구매자에게는 약속 장소를 노출하지 않고 빈 상태입니다.
 - 등록 시 Chat·상품 서비스를 조회하지 않습니다. 요청 본문의 `chatRoomId`, `productPostUuid`, `buyerUuid`, `sellerUuid`를 저장합니다.
 
 상태
@@ -68,7 +69,8 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 | created_at | DATETIME | NOT NULL | 생성 시각 |
 | updated_at | DATETIME | NOT NULL | 수정 시각 |
 
-부분 유니크: `(chat_room_id)` WHERE `status = 'CONFIRMED'`
+부분 유니크: `(chat_room_id)` WHERE `status = 'CONFIRMED'`  
+상품당 `CONFIRMED` 1건은 애플리케이션에서 `existsConfirmedByProductPostUuid`로 검사합니다. Hibernate `ddl-auto`는 MySQL 부분 유니크를 만들지 않으므로 `product_post_uuid` 전체 유니크는 두지 않습니다. `CANCELED`가 여러 건일 수 있기 때문입니다. 조회용 인덱스: `(product_post_uuid, status)`.
 
 `latitude`와 `longitude`는 필수입니다. 지도 재표시에 좌표가 필요합니다.
 
@@ -188,7 +190,7 @@ Body
 | 400 | INVALID_REQUEST | 필수 필드 없음, 좌표 없음, 좌표 한쪽만 있음, UUID/시각 형식 오류 |
 | 400 | CANNOT_RESERVE_WITH_SELF | buyerUuid와 sellerUuid가 동일 |
 | 403 | RESERVATION_ACCESS_DENIED | 호출자가 seller가 아님 |
-| 409 | RESERVATION_ALREADY_CONFIRMED | 해당 채팅방에 CONFIRMED 예약이 이미 있음 |
+| 409 | RESERVATION_ALREADY_CONFIRMED | 해당 채팅방 또는 같은 상품에 CONFIRMED 예약이 이미 있음 |
 
 ---
 
@@ -198,11 +200,11 @@ Body
 
 ### Summary
 
-채팅방 입장 시 오른쪽 패널을 채웁니다. Chat 상세(`GET /api/v1/chat/rooms/{roomId}`)와 다릅니다. 방 헤더·상대 프로필·읽음 처리는 Chat, 이 API는 현재 약속만 반환합니다. 프론트는 입장 때 두 요청을 같이 칩니다.
+채팅방 입장 시 오른쪽 패널을 채웁니다. Chat 상세(`GET /api/v1/chat/rooms/{roomId}`)와 다릅니다. 방 헤더·상대 프로필·읽음 처리는 Chat, 이 API는 현재 약속만 반환합니다. 프론트는 입장 때 두 요청을 같이 칩니다. 같은 상품의 다른 방에서 판매자가 예약 정보를 보려면 채팅방 상세의 `productPostUuid`를 쿼리로 넘깁니다.
 
 ### Method · Path
 
-`GET /api/v1/reservations/by-chat-room/{chatRoomId}`
+`GET /api/v1/reservations/by-chat-room/{chatRoomId}?productPostUuid={productPostUuid}`
 
 ### Auth
 
@@ -222,11 +224,17 @@ Path
 | ---------- | ------ | ---- | ---- |
 | chatRoomId | string | O    | Chat 방 Mongo ObjectId |
 
+Query
+
+| 필드            | 타입   | 필수 | 제약 |
+| --------------- | ------ | ---- | ---- |
+| productPostUuid | string | X    | 상품 게시글 UUID. 이 방에 CONFIRMED가 없을 때 같은 상품의 CONFIRMED를 찾음 |
+
 ### Response
 
-해당 방의 `CONFIRMED` 1건: `200` + 공통 상세 바디. 패널에 예약 정보·수정/취소를 그립니다.
-
-없거나 전부 `CANCELED`: **`204` 바디 없음**. 잘못된 id가 아니라 빈 패널입니다. 프론트는 “예약된 거래가 없습니다”와 예약하기를 그립니다.
+1. 이 방의 `CONFIRMED`가 있으면: 당사자면 `200` + 공통 상세 바디, 아니면 `403`.
+2. 없고 `productPostUuid`가 있으면: 그 상품의 `CONFIRMED`를 찾습니다. 호출자가 그 예약의 당사자(판매자 또는 해당 구매자)면 `200`. 다른 구매자·제3자는 장소를 노출하지 않고 **`204`**.
+3. 둘 다 없으면: **`204` 바디 없음**. 잘못된 id가 아니라 빈 패널입니다.
 
 `404`는 쓰지 않습니다. 빈 예약과 리소스 없음을 섞지 않기 위함입니다.
 
@@ -235,10 +243,10 @@ Path
 | status | code | 의미 |
 | ------ | ---- | ---- |
 | 401 | RESERVATION_AUTH_MISSING | X-Member-Uuid 헤더 없음 |
-| 400 | INVALID_REQUEST | chatRoomId 없음 |
+| 400 | INVALID_REQUEST | chatRoomId 없음, productPostUuid UUID 형식 오류 |
 | 403 | RESERVATION_ACCESS_DENIED | 이 방의 CONFIRMED 예약이 있는데 호출자가 당사자가 아님 |
 
-`CONFIRMED`가 없고 과거 `CANCELED`만 있을 때, 1차는 당사자 검사를 하지 않고 `204`를 반환합니다. Reservations는 Chat 참여자를 조회하지 않습니다.
+`CONFIRMED`가 없고 과거 `CANCELED`만 있을 때, 1차는 당사자 검사를 하지 않고 `204`를 반환합니다. Reservations는 Chat 참여자를 조회하지 않습니다. 다른 방 구매자에게 상품 단위 예약을 숨기는 것도 `204`입니다. 채팅 헤더 `tradeStatus = RESERVED`는 Chat/Kafka 연동이며 이 API 범위가 아닙니다.
 
 ---
 

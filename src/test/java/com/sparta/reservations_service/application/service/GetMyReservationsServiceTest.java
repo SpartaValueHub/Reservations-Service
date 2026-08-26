@@ -230,6 +230,22 @@ class GetMyReservationsServiceTest {
 		}
 
 		@Override
+		public boolean existsConfirmedByProductPostUuid(String productPostUuid) {
+			return findConfirmedByProductPostUuid(productPostUuid).isPresent();
+		}
+
+		@Override
+		public Optional<Reservation> findConfirmedByProductPostUuid(String productPostUuid) {
+			if (productPostUuid == null || productPostUuid.isBlank()) {
+				return Optional.empty();
+			}
+			return reservations.stream()
+					.filter(reservation -> reservation.getProductPostUuid().equals(productPostUuid)
+							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
+					.findFirst();
+		}
+
+		@Override
 		public List<Reservation> findByPartyMemberUuid(String memberUuid) {
 			return reservations.stream()
 					.filter(reservation -> reservation.isParty(memberUuid))

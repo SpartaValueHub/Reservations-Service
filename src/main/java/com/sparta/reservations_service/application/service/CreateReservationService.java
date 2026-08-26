@@ -53,7 +53,8 @@ public class CreateReservationService implements CreateReservationUseCase {
 		if (!memberUuid.equals(sellerUuid)) {
 			throw ReservationAccessDeniedException.sellerOnly();
 		}
-		if (loadReservationPort.existsConfirmedByChatRoomId(chatRoomId)) {
+		if (loadReservationPort.existsConfirmedByChatRoomId(chatRoomId)
+				|| loadReservationPort.existsConfirmedByProductPostUuid(productPostUuid)) {
 			throw new ReservationAlreadyConfirmedException();
 		}
 
