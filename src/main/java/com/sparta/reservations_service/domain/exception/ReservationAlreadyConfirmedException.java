@@ -1,6 +1,6 @@
 package com.sparta.reservations_service.domain.exception;
 
-// 채팅방에 이미 CONFIRMED 예약이 있음
+// 채팅방 또는 같은 상품에 이미 CONFIRMED 예약이 있음
 public class ReservationAlreadyConfirmedException extends RuntimeException {
 
 	// 안정적 에러 코드

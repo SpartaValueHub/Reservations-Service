@@ -27,7 +27,8 @@ import java.time.Instant;
 				@UniqueConstraint(name = "uk_reservations_reservation_uuid", columnNames = "reservation_uuid")
 		},
 		indexes = {
-				@Index(name = "ix_reservations_chat_room_status", columnList = "chat_room_id, status")
+				@Index(name = "ix_reservations_chat_room_status", columnList = "chat_room_id, status"),
+				@Index(name = "ix_reservations_product_post_status", columnList = "product_post_uuid, status")
 		}
 )
 @Getter

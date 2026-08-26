@@ -25,11 +25,20 @@ public class GetCurrentReservationByChatRoomService implements GetCurrentReserva
 
 	@Override
 	@Transactional(readOnly = true)
-	public Optional<ReservationDetailResultDto> get(String memberUuid, String chatRoomId) {
+	public Optional<ReservationDetailResultDto> get(String memberUuid, String chatRoomId, String productPostUuid) {
 		String actorUuid = requireMemberUuid(memberUuid);
 		String normalizedChatRoomId = requireChatRoomId(chatRoomId);
-		return loadReservationPort.findConfirmedByChatRoomId(normalizedChatRoomId)
-				.map(reservation -> ReservationDetailResultDto.from(requireParty(reservation, actorUuid)));
+		Optional<Reservation> roomReservation = loadReservationPort.findConfirmedByChatRoomId(normalizedChatRoomId);
+		if (roomReservation.isPresent()) {
+			return Optional.of(ReservationDetailResultDto.from(requireParty(roomReservation.get(), actorUuid)));
+		}
+		if (productPostUuid == null || productPostUuid.isBlank()) {
+			return Optional.empty();
+		}
+		String normalizedProductPostUuid = requireUuid(productPostUuid);
+		return loadReservationPort.findConfirmedByProductPostUuid(normalizedProductPostUuid)
+				.filter(reservation -> reservation.isParty(actorUuid))
+				.map(ReservationDetailResultDto::from);
 	}
 
 	private Reservation requireParty(Reservation reservation, String memberUuid) {
@@ -44,6 +53,16 @@ public class GetCurrentReservationByChatRoomService implements GetCurrentReserva
 		if (normalized.isBlank()) {
 			throw new ReservationAuthMissingException();
 		}
+		try {
+			return UUID.fromString(normalized).toString();
+		}
+		catch (IllegalArgumentException exception) {
+			throw new InvalidReservationRequestException("UUID 형식이 올바르지 않습니다.");
+		}
+	}
+
+	private String requireUuid(String value) {
+		String normalized = value.trim();
 		try {
 			return UUID.fromString(normalized).toString();
 		}

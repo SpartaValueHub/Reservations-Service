@@ -39,6 +39,23 @@ public class ReservationJpaAdapter implements LoadReservationPort, SaveReservati
 	}
 
 	@Override
+	public boolean existsConfirmedByProductPostUuid(String productPostUuid) {
+		if (productPostUuid == null || productPostUuid.isBlank()) {
+			return false;
+		}
+		return reservationJpaRepository.existsByProductPostUuidAndStatus(productPostUuid, ReservationStatus.CONFIRMED);
+	}
+
+	@Override
+	public Optional<Reservation> findConfirmedByProductPostUuid(String productPostUuid) {
+		if (productPostUuid == null || productPostUuid.isBlank()) {
+			return Optional.empty();
+		}
+		return reservationJpaRepository.findByProductPostUuidAndStatus(productPostUuid, ReservationStatus.CONFIRMED)
+				.map(reservationJpaMapper::toDomain);
+	}
+
+	@Override
 	public Optional<Reservation> findByReservationUuid(String reservationUuid) {
 		if (reservationUuid == null || reservationUuid.isBlank()) {
 			return Optional.empty();

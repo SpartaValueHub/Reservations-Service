@@ -58,9 +58,10 @@ public class ReservationController {
 	@GetMapping("/by-chat-room/{chatRoomId}")
 	public ResponseEntity<ReservationResponseVo> getCurrentReservationByChatRoom(
 			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
-			@PathVariable String chatRoomId
+			@PathVariable String chatRoomId,
+			@RequestParam(value = "productPostUuid", required = false) String productPostUuid
 	) {
-		return getCurrentReservationByChatRoomUseCase.get(memberUuid, chatRoomId)
+		return getCurrentReservationByChatRoomUseCase.get(memberUuid, chatRoomId, productPostUuid)
 				.map(resultDto -> ResponseEntity.ok(toVo(resultDto)))
 				.orElseGet(() -> ResponseEntity.noContent().build());
 	}
