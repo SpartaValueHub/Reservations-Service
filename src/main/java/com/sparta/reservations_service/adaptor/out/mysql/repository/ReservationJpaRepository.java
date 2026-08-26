@@ -12,4 +12,6 @@ public interface ReservationJpaRepository extends JpaRepository<ReservationEntit
 	boolean existsByChatRoomIdAndStatus(String chatRoomId, ReservationStatus status);
 
 	Optional<ReservationEntity> findByChatRoomIdAndStatus(String chatRoomId, ReservationStatus status);
+
+	Optional<ReservationEntity> findByReservationUuid(String reservationUuid);
 }

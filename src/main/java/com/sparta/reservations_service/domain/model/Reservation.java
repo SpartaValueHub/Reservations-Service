@@ -158,4 +158,63 @@ public class Reservation {
 	public boolean isParty(String memberUuid) {
 		return buyerUuid.equals(memberUuid) || sellerUuid.equals(memberUuid);
 	}
+
+	public boolean isSeller(String memberUuid) {
+		return sellerUuid.equals(memberUuid);
+	}
+
+	public boolean isConfirmed() {
+		return status == ReservationStatus.CONFIRMED;
+	}
+
+	public Reservation changeSchedule(
+			Instant scheduledAt,
+			String placeName,
+			String address,
+			Double latitude,
+			Double longitude
+	) {
+		return Reservation.builder()
+				.reservationId(this.reservationId)
+				.reservationUuid(this.reservationUuid)
+				.productPostUuid(this.productPostUuid)
+				.chatRoomId(this.chatRoomId)
+				.buyerUuid(this.buyerUuid)
+				.sellerUuid(this.sellerUuid)
+				.scheduledAt(scheduledAt)
+				.placeName(placeName)
+				.address(address)
+				.latitude(latitude)
+				.longitude(longitude)
+				.status(this.status)
+				.createdBy(this.createdBy)
+				.canceledBy(this.canceledBy)
+				.canceledAt(this.canceledAt)
+				.createdAt(this.createdAt)
+				.updatedAt(Instant.now())
+				.build();
+	}
+
+	public Reservation cancel(String canceledBy) {
+		Instant now = Instant.now();
+		return Reservation.builder()
+				.reservationId(this.reservationId)
+				.reservationUuid(this.reservationUuid)
+				.productPostUuid(this.productPostUuid)
+				.chatRoomId(this.chatRoomId)
+				.buyerUuid(this.buyerUuid)
+				.sellerUuid(this.sellerUuid)
+				.scheduledAt(this.scheduledAt)
+				.placeName(this.placeName)
+				.address(this.address)
+				.latitude(this.latitude)
+				.longitude(this.longitude)
+				.status(ReservationStatus.CANCELED)
+				.createdBy(this.createdBy)
+				.canceledBy(canceledBy)
+				.canceledAt(now)
+				.createdAt(this.createdAt)
+				.updatedAt(now)
+				.build();
+	}
 }

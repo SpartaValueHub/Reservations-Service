@@ -124,4 +124,26 @@ public class ReservationEntity {
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
 	}
+
+	public void apply(
+			Instant scheduledAt,
+			String placeName,
+			String address,
+			BigDecimal latitude,
+			BigDecimal longitude,
+			ReservationStatus status,
+			String canceledBy,
+			Instant canceledAt,
+			Instant updatedAt
+	) {
+		this.scheduledAt = scheduledAt;
+		this.placeName = placeName;
+		this.address = address;
+		this.latitude = latitude;
+		this.longitude = longitude;
+		this.status = status;
+		this.canceledBy = canceledBy;
+		this.canceledAt = canceledAt;
+		this.updatedAt = updatedAt;
+	}
 }

@@ -31,6 +31,20 @@ public class ReservationJpaMapper {
 				.build();
 	}
 
+	public void updateEntity(ReservationEntity entity, Reservation reservation) {
+		entity.apply(
+				reservation.getScheduledAt(),
+				reservation.getPlaceName(),
+				reservation.getAddress(),
+				toDecimal(reservation.getLatitude()),
+				toDecimal(reservation.getLongitude()),
+				reservation.getStatus(),
+				reservation.getCanceledBy(),
+				reservation.getCanceledAt(),
+				reservation.getUpdatedAt()
+		);
+	}
+
 	public Reservation toDomain(ReservationEntity entity) {
 		return Reservation.restore(
 				entity.getReservationId(),

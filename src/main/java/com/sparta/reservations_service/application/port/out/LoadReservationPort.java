@@ -10,4 +10,6 @@ public interface LoadReservationPort {
 	boolean existsConfirmedByChatRoomId(String chatRoomId);
 
 	Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId);
+
+	Optional<Reservation> findByReservationUuid(String reservationUuid);
 }

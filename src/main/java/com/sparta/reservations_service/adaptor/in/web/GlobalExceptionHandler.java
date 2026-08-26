@@ -4,8 +4,11 @@ import com.sparta.reservations_service.adaptor.in.web.vo.ErrorResponseVo;
 import com.sparta.reservations_service.domain.exception.CannotReserveWithSelfException;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import com.sparta.reservations_service.domain.exception.ReservationAccessDeniedException;
+import com.sparta.reservations_service.domain.exception.ReservationAlreadyCanceledException;
 import com.sparta.reservations_service.domain.exception.ReservationAlreadyConfirmedException;
 import com.sparta.reservations_service.domain.exception.ReservationAuthMissingException;
+import com.sparta.reservations_service.domain.exception.ReservationNotConfirmedException;
+import com.sparta.reservations_service.domain.exception.ReservationNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +64,30 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ReservationAlreadyConfirmedException.class)
 	public ResponseEntity<ErrorResponseVo> handleAlreadyConfirmed(
 			ReservationAlreadyConfirmedException exception,
+			HttpServletRequest request
+	) {
+		return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage(), request);
+	}
+
+	@ExceptionHandler(ReservationNotFoundException.class)
+	public ResponseEntity<ErrorResponseVo> handleNotFound(
+			ReservationNotFoundException exception,
+			HttpServletRequest request
+	) {
+		return error(HttpStatus.NOT_FOUND, exception.getCode(), exception.getMessage(), request);
+	}
+
+	@ExceptionHandler(ReservationNotConfirmedException.class)
+	public ResponseEntity<ErrorResponseVo> handleNotConfirmed(
+			ReservationNotConfirmedException exception,
+			HttpServletRequest request
+	) {
+		return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage(), request);
+	}
+
+	@ExceptionHandler(ReservationAlreadyCanceledException.class)
+	public ResponseEntity<ErrorResponseVo> handleAlreadyCanceled(
+			ReservationAlreadyCanceledException exception,
 			HttpServletRequest request
 	) {
 		return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage(), request);

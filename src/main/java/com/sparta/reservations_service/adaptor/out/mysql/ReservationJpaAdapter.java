@@ -1,5 +1,6 @@
 package com.sparta.reservations_service.adaptor.out.mysql;
 
+import com.sparta.reservations_service.adaptor.out.mysql.entity.ReservationEntity;
 import com.sparta.reservations_service.adaptor.out.mysql.mapper.ReservationJpaMapper;
 import com.sparta.reservations_service.adaptor.out.mysql.repository.ReservationJpaRepository;
 import com.sparta.reservations_service.application.port.out.LoadReservationPort;
@@ -37,9 +38,30 @@ public class ReservationJpaAdapter implements LoadReservationPort, SaveReservati
 	}
 
 	@Override
+	public Optional<Reservation> findByReservationUuid(String reservationUuid) {
+		if (reservationUuid == null || reservationUuid.isBlank()) {
+			return Optional.empty();
+		}
+		return reservationJpaRepository.findByReservationUuid(reservationUuid)
+				.map(reservationJpaMapper::toDomain);
+	}
+
+	@Override
 	public Reservation save(Reservation reservation) {
-		return reservationJpaMapper.toDomain(
-				reservationJpaRepository.save(reservationJpaMapper.toEntity(reservation))
-		);
+		if (reservation.getReservationId() == null) {
+			return reservationJpaMapper.toDomain(
+					reservationJpaRepository.save(reservationJpaMapper.toEntity(reservation))
+			);
+		}
+		return reservationJpaRepository.findById(reservation.getReservationId())
+				.map(entity -> updateExisting(entity, reservation))
+				.orElseGet(() -> reservationJpaMapper.toDomain(
+						reservationJpaRepository.save(reservationJpaMapper.toEntity(reservation))
+				));
+	}
+
+	private Reservation updateExisting(ReservationEntity entity, Reservation reservation) {
+		reservationJpaMapper.updateEntity(entity, reservation);
+		return reservationJpaMapper.toDomain(reservationJpaRepository.save(entity));
 	}
 }

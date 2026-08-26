@@ -165,5 +165,12 @@ class GetCurrentReservationByChatRoomServiceTest {
 							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
 					.findFirst();
 		}
+
+		@Override
+		public Optional<Reservation> findByReservationUuid(String reservationUuid) {
+			return reservations.stream()
+					.filter(reservation -> reservation.getReservationUuid().equals(reservationUuid))
+					.findFirst();
+		}
 	}
 }

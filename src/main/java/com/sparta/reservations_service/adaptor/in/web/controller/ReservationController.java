@@ -2,15 +2,21 @@ package com.sparta.reservations_service.adaptor.in.web.controller;
 
 import com.sparta.reservations_service.adaptor.in.web.vo.CreateReservationRequestVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.ReservationResponseVo;
+import com.sparta.reservations_service.adaptor.in.web.vo.UpdateReservationRequestVo;
+import com.sparta.reservations_service.application.port.in.CancelReservationUseCase;
 import com.sparta.reservations_service.application.port.in.CreateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.GetCurrentReservationByChatRoomUseCase;
+import com.sparta.reservations_service.application.port.in.UpdateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.dto.CreateReservationCommandDto;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
+import com.sparta.reservations_service.application.port.in.dto.UpdateReservationCommandDto;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,6 +34,8 @@ public class ReservationController {
 
 	private final CreateReservationUseCase createReservationUseCase;
 	private final GetCurrentReservationByChatRoomUseCase getCurrentReservationByChatRoomUseCase;
+	private final UpdateReservationUseCase updateReservationUseCase;
+	private final CancelReservationUseCase cancelReservationUseCase;
 
 	@GetMapping("/by-chat-room/{chatRoomId}")
 	public ResponseEntity<ReservationResponseVo> getCurrentReservationByChatRoom(
@@ -51,6 +59,29 @@ public class ReservationController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(toVo(resultDto));
 	}
 
+	@PatchMapping("/{reservationId}")
+	public ResponseEntity<ReservationResponseVo> updateReservation(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@PathVariable String reservationId,
+			@RequestBody(required = false) UpdateReservationRequestVo requestVo
+	) {
+		if (requestVo == null) {
+			throw new InvalidReservationRequestException("요청 본문이 필요합니다.");
+		}
+		ReservationDetailResultDto resultDto = updateReservationUseCase.update(
+				toUpdateCommand(memberUuid, reservationId, requestVo)
+		);
+		return ResponseEntity.ok(toVo(resultDto));
+	}
+
+	@DeleteMapping("/{reservationId}")
+	public ResponseEntity<ReservationResponseVo> cancelReservation(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@PathVariable String reservationId
+	) {
+		return ResponseEntity.ok(toVo(cancelReservationUseCase.cancel(memberUuid, reservationId)));
+	}
+
 	private CreateReservationCommandDto toCommand(String memberUuid, CreateReservationRequestVo requestVo) {
 		return CreateReservationCommandDto.builder()
 				.memberUuid(memberUuid)
@@ -61,6 +92,23 @@ public class ReservationController {
 				.scheduledAt(requestVo.getScheduledAt())
 				.placeName(requestVo.getPlaceName())
 				.address(requestVo.getAddress())
+				.latitude(requestVo.getLatitude())
+				.longitude(requestVo.getLongitude())
+				.build();
+	}
+
+	private UpdateReservationCommandDto toUpdateCommand(
+			String memberUuid,
+			String reservationId,
+			UpdateReservationRequestVo requestVo
+	) {
+		return UpdateReservationCommandDto.builder()
+				.memberUuid(memberUuid)
+				.reservationId(reservationId)
+				.scheduledAt(requestVo.getScheduledAt())
+				.placeName(requestVo.getPlaceName())
+				.address(requestVo.getAddress())
+				.addressSpecified(requestVo.isAddressSpecified())
 				.latitude(requestVo.getLatitude())
 				.longitude(requestVo.getLongitude())
 				.build();

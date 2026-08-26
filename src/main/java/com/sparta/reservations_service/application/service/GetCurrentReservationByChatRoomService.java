@@ -29,7 +29,7 @@ public class GetCurrentReservationByChatRoomService implements GetCurrentReserva
 		String actorUuid = requireMemberUuid(memberUuid);
 		String normalizedChatRoomId = requireChatRoomId(chatRoomId);
 		return loadReservationPort.findConfirmedByChatRoomId(normalizedChatRoomId)
-				.map(reservation -> toResult(requireParty(reservation, actorUuid)));
+				.map(reservation -> ReservationDetailResultDto.from(requireParty(reservation, actorUuid)));
 	}
 
 	private Reservation requireParty(Reservation reservation, String memberUuid) {
@@ -37,27 +37,6 @@ public class GetCurrentReservationByChatRoomService implements GetCurrentReserva
 			throw new ReservationAccessDeniedException();
 		}
 		return reservation;
-	}
-
-	private ReservationDetailResultDto toResult(Reservation reservation) {
-		return ReservationDetailResultDto.builder()
-				.reservationId(reservation.getReservationUuid())
-				.chatRoomId(reservation.getChatRoomId())
-				.productPostUuid(reservation.getProductPostUuid())
-				.buyerUuid(reservation.getBuyerUuid())
-				.sellerUuid(reservation.getSellerUuid())
-				.scheduledAt(reservation.getScheduledAt())
-				.placeName(reservation.getPlaceName())
-				.address(reservation.getAddress())
-				.latitude(reservation.getLatitude())
-				.longitude(reservation.getLongitude())
-				.status(reservation.getStatus())
-				.createdBy(reservation.getCreatedBy())
-				.canceledBy(reservation.getCanceledBy())
-				.canceledAt(reservation.getCanceledAt())
-				.createdAt(reservation.getCreatedAt())
-				.updatedAt(reservation.getUpdatedAt())
-				.build();
 	}
 
 	private String requireMemberUuid(String value) {
