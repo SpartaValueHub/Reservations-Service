@@ -5,6 +5,8 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 1차 범위: 등록, 채팅방 현재 예약, 내 목록, 단건, 수정, 취소.  
 채팅 `RESERVATION` 말풍선 삽입, 게시글 `tradeStatus` 연동, Chat·상품 HTTP 조회는 하지 않습니다.
 
+구현됨: `POST /api/v1/reservations`, `GET /api/v1/reservations/by-chat-room/{chatRoomId}`, `GET /api/v1/reservations/me`, `GET /api/v1/reservations/{reservationId}`, `PATCH /api/v1/reservations/{reservationId}`, `DELETE /api/v1/reservations/{reservationId}`
+
 공통 Error Response:
 
 ```json
@@ -57,8 +59,8 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 | scheduled_at | DATETIME | NOT NULL | 거래 예정 일시 |
 | place_name | VARCHAR(100) | NOT NULL | 거래 장소명 |
 | address | VARCHAR(255) | NULL | 거래 장소 주소 |
-| latitude | DECIMAL(10,7) | NULL | 위도 |
-| longitude | DECIMAL(10,7) | NULL | 경도 |
+| latitude | DECIMAL(10,7) | NOT NULL | 위도 |
+| longitude | DECIMAL(10,7) | NOT NULL | 경도 |
 | status | ENUM('CONFIRMED','CANCELED') | NOT NULL | 예약 상태 |
 | created_by | CHAR(36) | NOT NULL | 등록한 회원 |
 | canceled_by | CHAR(36) | NULL | 취소한 회원 |
@@ -68,7 +70,7 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 
 부분 유니크: `(chat_room_id)` WHERE `status = 'CONFIRMED'`
 
-`latitude`와 `longitude`는 둘 다 있거나 둘 다 없습니다.
+`latitude`와 `longitude`는 필수입니다. 지도 재표시에 좌표가 필요합니다.
 
 ---
 
@@ -86,8 +88,8 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 | scheduledAt | string (ISO-8601) |
 | placeName | string |
 | address | string \| null |
-| latitude | number \| null |
-| longitude | number \| null |
+| latitude | number |
+| longitude | number |
 | status | string (`CONFIRMED` `CANCELED`) |
 | createdBy | string |
 | canceledBy | string \| null |
@@ -122,9 +124,11 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 
 ## 거래 예약 등록
 
+구현됨.
+
 ### Summary
 
-채팅 오른쪽 패널에서 날짜·시간·장소를 정해 예약을 만듭니다. **판매자만** 호출할 수 있습니다. 프론트는 채팅방 상세의 `seller.memberUuid`와 로그인 UUID를 비교해 예약하기를 노출합니다. Chat·상품 서비스는 조회하지 않습니다.
+채팅 오른쪽 패널에서 날짜·시간·장소를 정해 예약을 만듭니다. **판매자만** 호출할 수 있습니다. 프론트는 채팅방 상세의 `seller.memberUuid`와 로그인 UUID를 비교해 예약하기를 노출합니다. Chat·상품 서비스는 조회하지 않습니다. `placeName`, `latitude`, `longitude`는 필수입니다. 백엔드는 지오코딩하지 않습니다.
 
 ### Method · Path
 
@@ -153,8 +157,8 @@ Body
 | scheduledAt     | string | O    | ISO-8601 |
 | placeName       | string | O    | 거래 장소명. trim 후 빈 값 불가 |
 | address         | string | X    | 거래 장소 주소 |
-| latitude        | number | X    | 위도. 있으면 longitude도 필수 |
-| longitude       | number | X    | 경도. 있으면 latitude도 필수 |
+| latitude        | number | O    | 위도. longitude와 함께 필수 |
+| longitude       | number | O    | 경도. latitude와 함께 필수 |
 
 호출자는 `sellerUuid`여야 합니다. 채팅방 화면의 `seller.memberUuid`를 그대로 넣습니다.
 
@@ -181,7 +185,7 @@ Body
 | status | code | 의미 |
 | ------ | ---- | ---- |
 | 401 | RESERVATION_AUTH_MISSING | X-Member-Uuid 헤더 없음 |
-| 400 | INVALID_REQUEST | 필수 필드 없음, 좌표 한쪽만 있음, UUID/시각 형식 오류 |
+| 400 | INVALID_REQUEST | 필수 필드 없음, 좌표 없음, 좌표 한쪽만 있음, UUID/시각 형식 오류 |
 | 400 | CANNOT_RESERVE_WITH_SELF | buyerUuid와 sellerUuid가 동일 |
 | 403 | RESERVATION_ACCESS_DENIED | 호출자가 seller가 아님 |
 | 409 | RESERVATION_ALREADY_CONFIRMED | 해당 채팅방에 CONFIRMED 예약이 이미 있음 |
@@ -189,6 +193,8 @@ Body
 ---
 
 ## 채팅방 현재 예약
+
+구현됨.
 
 ### Summary
 
@@ -237,6 +243,8 @@ Path
 ---
 
 ## 내 거래 예약 목록
+
+구현됨.
 
 ### Summary
 
@@ -310,6 +318,8 @@ Query
 
 ## 거래 예약 상세
 
+구현됨.
+
 ### Summary
 
 수정 폼, 취소 전 확인, 이후 채팅 시스템 메시지의 `reservationId`로 다시 볼 때 사용합니다. `CONFIRMED`와 `CANCELED` 모두 반환합니다.
@@ -353,9 +363,11 @@ Path
 
 ## 거래 예약 수정
 
+구현됨.
+
 ### Summary
 
-현재 예약의 날짜·시간·장소만 바꿉니다. **판매자만** 호출할 수 있습니다. 같은 행을 업데이트합니다. 새 행을 만들지 않습니다.
+현재 예약의 날짜·시간·장소만 바꿉니다. **판매자만** 호출할 수 있습니다. 같은 행을 업데이트합니다. 새 행을 만들지 않습니다. 좌표를 보내면 `latitude`와 `longitude`를 함께 보냅니다. 등록된 좌표는 제거하지 않습니다.
 
 ### Method · Path
 
@@ -386,8 +398,8 @@ Body — 보낸 필드만 변경합니다. 비어 있으면 400입니다.
 | scheduledAt | string | X    | ISO-8601 |
 | placeName   | string | X    | trim 후 빈 값 불가 |
 | address     | string | X    | null이면 주소 제거 |
-| latitude    | number | X    | longitude와 함께 |
-| longitude   | number | X    | latitude와 함께 |
+| latitude    | number | X    | 보내면 longitude와 함께 필수. 제거 불가 |
+| longitude   | number | X    | 보내면 latitude와 함께 필수. 제거 불가 |
 
 ```json
 {
@@ -416,6 +428,8 @@ Body — 보낸 필드만 변경합니다. 비어 있으면 400입니다.
 ---
 
 ## 거래 예약 취소
+
+구현됨.
 
 ### Summary
 
@@ -473,7 +487,7 @@ GET /api/v1/chat/rooms/{roomId}/messages
 
 채팅방 상세의 `seller.memberUuid`가 로그인 UUID와 같으면 예약하기·수정·취소를 노출합니다. 구매자는 조회만 합니다.
 
-예약하기(판매자): `POST /api/v1/reservations` → 패널은 201 바디로 채움. `sellerUuid`는 `seller.memberUuid`  
+예약하기(판매자): `POST /api/v1/reservations` → 패널은 201 바디로 채움. `sellerUuid`는 `seller.memberUuid`. `placeName`·`latitude`·`longitude` 필수  
 목록 카드: `GET /api/v1/reservations/me` → `chatRoomId`로 채팅 이동  
 수정(판매자): `PATCH /api/v1/reservations/{reservationId}`  
 취소(판매자): `DELETE /api/v1/reservations/{reservationId}` → 현재 예약은 204

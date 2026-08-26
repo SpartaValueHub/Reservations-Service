@@ -1,5 +1,7 @@
 package com.sparta.reservations_service.domain.model;
 
+import com.sparta.reservations_service.domain.exception.ReservationAlreadyCanceledException;
+import com.sparta.reservations_service.domain.exception.ReservationNotConfirmedException;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -163,57 +165,61 @@ public class Reservation {
 		return sellerUuid.equals(memberUuid);
 	}
 
-	public boolean isConfirmed() {
-		return status == ReservationStatus.CONFIRMED;
-	}
-
-	public Reservation changeSchedule(
+	// 같은 행의 일시·장소만 바꾼다. CANCELED는 수정 불가
+	public Reservation updateMeeting(
 			Instant scheduledAt,
 			String placeName,
 			String address,
 			Double latitude,
 			Double longitude
 	) {
+		if (status != ReservationStatus.CONFIRMED) {
+			throw new ReservationNotConfirmedException();
+		}
 		return Reservation.builder()
-				.reservationId(this.reservationId)
-				.reservationUuid(this.reservationUuid)
-				.productPostUuid(this.productPostUuid)
-				.chatRoomId(this.chatRoomId)
-				.buyerUuid(this.buyerUuid)
-				.sellerUuid(this.sellerUuid)
+				.reservationId(reservationId)
+				.reservationUuid(reservationUuid)
+				.productPostUuid(productPostUuid)
+				.chatRoomId(chatRoomId)
+				.buyerUuid(buyerUuid)
+				.sellerUuid(sellerUuid)
 				.scheduledAt(scheduledAt)
 				.placeName(placeName)
 				.address(address)
 				.latitude(latitude)
 				.longitude(longitude)
-				.status(this.status)
-				.createdBy(this.createdBy)
-				.canceledBy(this.canceledBy)
-				.canceledAt(this.canceledAt)
-				.createdAt(this.createdAt)
+				.status(status)
+				.createdBy(createdBy)
+				.canceledBy(canceledBy)
+				.canceledAt(canceledAt)
+				.createdAt(createdAt)
 				.updatedAt(Instant.now())
 				.build();
 	}
 
-	public Reservation cancel(String canceledBy) {
+	// 행은 남기고 CANCELED로 바꾼다. 이미 취소면 거부
+	public Reservation cancel(String memberUuid) {
+		if (status == ReservationStatus.CANCELED) {
+			throw new ReservationAlreadyCanceledException();
+		}
 		Instant now = Instant.now();
 		return Reservation.builder()
-				.reservationId(this.reservationId)
-				.reservationUuid(this.reservationUuid)
-				.productPostUuid(this.productPostUuid)
-				.chatRoomId(this.chatRoomId)
-				.buyerUuid(this.buyerUuid)
-				.sellerUuid(this.sellerUuid)
-				.scheduledAt(this.scheduledAt)
-				.placeName(this.placeName)
-				.address(this.address)
-				.latitude(this.latitude)
-				.longitude(this.longitude)
+				.reservationId(reservationId)
+				.reservationUuid(reservationUuid)
+				.productPostUuid(productPostUuid)
+				.chatRoomId(chatRoomId)
+				.buyerUuid(buyerUuid)
+				.sellerUuid(sellerUuid)
+				.scheduledAt(scheduledAt)
+				.placeName(placeName)
+				.address(address)
+				.latitude(latitude)
+				.longitude(longitude)
 				.status(ReservationStatus.CANCELED)
-				.createdBy(this.createdBy)
-				.canceledBy(canceledBy)
+				.createdBy(createdBy)
+				.canceledBy(memberUuid)
 				.canceledAt(now)
-				.createdAt(this.createdAt)
+				.createdAt(createdAt)
 				.updatedAt(now)
 				.build();
 	}

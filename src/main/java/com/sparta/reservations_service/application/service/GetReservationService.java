@@ -1,9 +1,8 @@
 package com.sparta.reservations_service.application.service;
 
-import com.sparta.reservations_service.application.port.in.CancelReservationUseCase;
+import com.sparta.reservations_service.application.port.in.GetReservationUseCase;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
 import com.sparta.reservations_service.application.port.out.LoadReservationPort;
-import com.sparta.reservations_service.application.port.out.SaveReservationPort;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import com.sparta.reservations_service.domain.exception.ReservationAccessDeniedException;
 import com.sparta.reservations_service.domain.exception.ReservationAuthMissingException;
@@ -17,25 +16,43 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class CancelReservationService implements CancelReservationUseCase {
+public class GetReservationService implements GetReservationUseCase {
 
-	// 취소 대상 조회
+	// 예약 조회
 	private final LoadReservationPort loadReservationPort;
-	// 같은 행 저장. 삭제가 아님
-	private final SaveReservationPort saveReservationPort;
 
 	@Override
-	@Transactional
-	public ReservationDetailResultDto cancel(String memberUuid, String reservationId) {
+	@Transactional(readOnly = true)
+	public ReservationDetailResultDto get(String memberUuid, String reservationId) {
 		String actorUuid = requireMemberUuid(memberUuid);
 		String reservationUuid = requireReservationUuid(reservationId);
 		Reservation reservation = loadReservationPort.findByReservationUuid(reservationUuid)
 				.orElseThrow(ReservationNotFoundException::new);
-		if (!reservation.isSeller(actorUuid)) {
-			throw ReservationAccessDeniedException.sellerOnly();
+		if (!reservation.isParty(actorUuid)) {
+			throw new ReservationAccessDeniedException();
 		}
-		Reservation saved = saveReservationPort.save(reservation.cancel(actorUuid));
-		return ReservationDetailResultDto.from(saved);
+		return toResult(reservation);
+	}
+
+	private ReservationDetailResultDto toResult(Reservation reservation) {
+		return ReservationDetailResultDto.builder()
+				.reservationId(reservation.getReservationUuid())
+				.chatRoomId(reservation.getChatRoomId())
+				.productPostUuid(reservation.getProductPostUuid())
+				.buyerUuid(reservation.getBuyerUuid())
+				.sellerUuid(reservation.getSellerUuid())
+				.scheduledAt(reservation.getScheduledAt())
+				.placeName(reservation.getPlaceName())
+				.address(reservation.getAddress())
+				.latitude(reservation.getLatitude())
+				.longitude(reservation.getLongitude())
+				.status(reservation.getStatus())
+				.createdBy(reservation.getCreatedBy())
+				.canceledBy(reservation.getCanceledBy())
+				.canceledAt(reservation.getCanceledAt())
+				.createdAt(reservation.getCreatedAt())
+				.updatedAt(reservation.getUpdatedAt())
+				.build();
 	}
 
 	private String requireMemberUuid(String value) {

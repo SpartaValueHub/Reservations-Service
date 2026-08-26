@@ -8,7 +8,6 @@ import com.sparta.reservations_service.application.port.out.SaveReservationPort;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import com.sparta.reservations_service.domain.exception.ReservationAccessDeniedException;
 import com.sparta.reservations_service.domain.exception.ReservationAuthMissingException;
-import com.sparta.reservations_service.domain.exception.ReservationNotConfirmedException;
 import com.sparta.reservations_service.domain.exception.ReservationNotFoundException;
 import com.sparta.reservations_service.domain.model.Reservation;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +21,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpdateReservationService implements UpdateReservationUseCase {
 
+	// 수정 대상 조회
 	private final LoadReservationPort loadReservationPort;
+	// 같은 행 저장
 	private final SaveReservationPort saveReservationPort;
 
 	@Override
@@ -33,47 +34,54 @@ public class UpdateReservationService implements UpdateReservationUseCase {
 		}
 
 		String memberUuid = requireMemberUuid(command.getMemberUuid());
-		String reservationUuid = requireUuid(command.getReservationId(), "reservationId는 필수입니다.");
+		String reservationUuid = requireReservationUuid(command.getReservationId());
+		if (!hasPatch(command)) {
+			throw new InvalidReservationRequestException("변경할 값이 필요합니다.");
+		}
+
 		Reservation reservation = loadReservationPort.findByReservationUuid(reservationUuid)
 				.orElseThrow(ReservationNotFoundException::new);
-
 		if (!reservation.isSeller(memberUuid)) {
 			throw ReservationAccessDeniedException.sellerOnly();
 		}
-		if (!reservation.isConfirmed()) {
-			throw new ReservationNotConfirmedException();
-		}
 
-		ChangeSet changeSet = resolveChanges(command, reservation);
-		Reservation saved = saveReservationPort.save(reservation.changeSchedule(
-				changeSet.scheduledAt,
-				changeSet.placeName,
-				changeSet.address,
-				changeSet.latitude,
-				changeSet.longitude
+		Instant scheduledAt = command.getScheduledAt() == null
+				? reservation.getScheduledAt()
+				: command.getScheduledAt();
+		String placeName = command.getPlaceName() == null
+				? reservation.getPlaceName()
+				: requireText(command.getPlaceName(), "placeName은 비울 수 없습니다.");
+		String address = command.isAddressSpecified()
+				? optionalText(command.getAddress())
+				: reservation.getAddress();
+		Coordinate coordinate = resolveCoordinate(command, reservation);
+
+		Reservation saved = saveReservationPort.save(reservation.updateMeeting(
+				scheduledAt,
+				placeName,
+				address,
+				coordinate.latitude,
+				coordinate.longitude
 		));
 		return ReservationDetailResultDto.from(saved);
 	}
 
-	private ChangeSet resolveChanges(UpdateReservationCommandDto command, Reservation reservation) {
-		boolean scheduledAtSpecified = command.getScheduledAt() != null;
-		boolean placeNameSpecified = command.getPlaceName() != null;
-		boolean coordinatesSpecified = command.getLatitude() != null || command.getLongitude() != null;
-		if (!scheduledAtSpecified && !placeNameSpecified && !command.isAddressSpecified() && !coordinatesSpecified) {
-			throw new InvalidReservationRequestException("수정할 필드가 필요합니다.");
-		}
+	private boolean hasPatch(UpdateReservationCommandDto command) {
+		return command.getScheduledAt() != null
+				|| command.getPlaceName() != null
+				|| command.isAddressSpecified()
+				|| command.getLatitude() != null
+				|| command.getLongitude() != null;
+	}
 
-		Instant scheduledAt = scheduledAtSpecified ? command.getScheduledAt() : reservation.getScheduledAt();
-		String placeName = placeNameSpecified
-				? requireText(command.getPlaceName(), "placeName은 비어 있을 수 없습니다.")
-				: reservation.getPlaceName();
-		String address = command.isAddressSpecified()
-				? optionalText(command.getAddress())
-				: reservation.getAddress();
-		Coordinate coordinate = coordinatesSpecified
-				? requireCoordinate(command.getLatitude(), command.getLongitude())
-				: new Coordinate(reservation.getLatitude(), reservation.getLongitude());
-		return new ChangeSet(scheduledAt, placeName, address, coordinate.latitude, coordinate.longitude);
+	private Coordinate resolveCoordinate(UpdateReservationCommandDto command, Reservation reservation) {
+		if (command.getLatitude() == null && command.getLongitude() == null) {
+			return new Coordinate(reservation.getLatitude(), reservation.getLongitude());
+		}
+		if (command.getLatitude() == null || command.getLongitude() == null) {
+			throw new InvalidReservationRequestException("latitude와 longitude는 함께 보내야 합니다.");
+		}
+		return requireCoordinate(command.getLatitude(), command.getLongitude());
 	}
 
 	private String requireMemberUuid(String value) {
@@ -81,16 +89,20 @@ public class UpdateReservationService implements UpdateReservationUseCase {
 		if (normalized.isBlank()) {
 			throw new ReservationAuthMissingException();
 		}
-		return requireUuid(normalized, "X-Member-Uuid 형식이 올바르지 않습니다.");
+		return requireUuid(normalized);
 	}
 
-	private String requireUuid(String value, String blankMessage) {
+	private String requireReservationUuid(String value) {
 		String normalized = value == null ? "" : value.trim();
 		if (normalized.isBlank()) {
-			throw new InvalidReservationRequestException(blankMessage);
+			throw new InvalidReservationRequestException("reservationId는 필수입니다.");
 		}
+		return requireUuid(normalized);
+	}
+
+	private String requireUuid(String value) {
 		try {
-			return UUID.fromString(normalized).toString();
+			return UUID.fromString(value).toString();
 		}
 		catch (IllegalArgumentException exception) {
 			throw new InvalidReservationRequestException("UUID 형식이 올바르지 않습니다.");
@@ -114,9 +126,6 @@ public class UpdateReservationService implements UpdateReservationUseCase {
 	}
 
 	private Coordinate requireCoordinate(Double latitude, Double longitude) {
-		if (latitude == null || longitude == null) {
-			throw new InvalidReservationRequestException("latitude와 longitude는 함께 보내야 합니다.");
-		}
 		if (latitude < -90 || latitude > 90) {
 			throw new InvalidReservationRequestException("latitude 범위가 올바르지 않습니다.");
 		}
@@ -124,15 +133,6 @@ public class UpdateReservationService implements UpdateReservationUseCase {
 			throw new InvalidReservationRequestException("longitude 범위가 올바르지 않습니다.");
 		}
 		return new Coordinate(latitude, longitude);
-	}
-
-	private record ChangeSet(
-			Instant scheduledAt,
-			String placeName,
-			String address,
-			Double latitude,
-			Double longitude
-	) {
 	}
 
 	private record Coordinate(Double latitude, Double longitude) {

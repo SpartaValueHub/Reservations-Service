@@ -1,6 +1,6 @@
 package com.sparta.reservations_service.domain.exception;
 
-// 이미 취소된 예약을 다시 취소함
+// 이미 CANCELED인 예약을 다시 취소함
 public class ReservationAlreadyCanceledException extends RuntimeException {
 
 	// 안정적 에러 코드

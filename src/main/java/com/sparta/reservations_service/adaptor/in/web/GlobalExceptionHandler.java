@@ -53,6 +53,14 @@ public class GlobalExceptionHandler {
 		return error(HttpStatus.BAD_REQUEST, exception.getCode(), exception.getMessage(), request);
 	}
 
+	@ExceptionHandler(ReservationNotFoundException.class)
+	public ResponseEntity<ErrorResponseVo> handleNotFound(
+			ReservationNotFoundException exception,
+			HttpServletRequest request
+	) {
+		return error(HttpStatus.NOT_FOUND, exception.getCode(), exception.getMessage(), request);
+	}
+
 	@ExceptionHandler(ReservationAccessDeniedException.class)
 	public ResponseEntity<ErrorResponseVo> handleAccessDenied(
 			ReservationAccessDeniedException exception,
@@ -67,14 +75,6 @@ public class GlobalExceptionHandler {
 			HttpServletRequest request
 	) {
 		return error(HttpStatus.CONFLICT, exception.getCode(), exception.getMessage(), request);
-	}
-
-	@ExceptionHandler(ReservationNotFoundException.class)
-	public ResponseEntity<ErrorResponseVo> handleNotFound(
-			ReservationNotFoundException exception,
-			HttpServletRequest request
-	) {
-		return error(HttpStatus.NOT_FOUND, exception.getCode(), exception.getMessage(), request);
 	}
 
 	@ExceptionHandler(ReservationNotConfirmedException.class)

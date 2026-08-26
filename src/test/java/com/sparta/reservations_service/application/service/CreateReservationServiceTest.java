@@ -115,6 +115,17 @@ class CreateReservationServiceTest {
 	}
 
 	@Test
+	void create_rejectsMissingCoordinates() {
+		CreateReservationCommandDto command = command(BUYER_UUID).toBuilder()
+				.latitude(null)
+				.longitude(null)
+				.build();
+
+		assertThrows(InvalidReservationRequestException.class, () -> service.create(command));
+		assertEquals(0, store.reservations.size());
+	}
+
+	@Test
 	void create_rejectsBlankPlaceName() {
 		CreateReservationCommandDto command = command(SELLER_UUID).toBuilder()
 				.placeName("  ")
@@ -166,10 +177,18 @@ class CreateReservationServiceTest {
 		}
 
 		@Override
+		public List<Reservation> findByPartyMemberUuid(String memberUuid) {
+			return List.of();
+		}
+
+		@Override
+		public List<Reservation> findByPartyMemberUuidAndStatus(String memberUuid, ReservationStatus status) {
+			return List.of();
+		}
+
+		@Override
 		public Optional<Reservation> findByReservationUuid(String reservationUuid) {
-			return reservations.stream()
-					.filter(reservation -> reservation.getReservationUuid().equals(reservationUuid))
-					.findFirst();
+			return Optional.empty();
 		}
 
 		@Override

@@ -5,6 +5,7 @@ import com.sparta.reservations_service.application.port.out.LoadReservationPort;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
 import com.sparta.reservations_service.domain.exception.ReservationAccessDeniedException;
 import com.sparta.reservations_service.domain.exception.ReservationAuthMissingException;
+import com.sparta.reservations_service.domain.exception.ReservationNotFoundException;
 import com.sparta.reservations_service.domain.model.Reservation;
 import com.sparta.reservations_service.domain.model.ReservationStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,9 +19,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class GetCurrentReservationByChatRoomServiceTest {
+class GetReservationServiceTest {
 
 	private static final String BUYER_UUID = "22222222-2222-4222-8222-222222222222";
 	private static final String SELLER_UUID = "33333333-3333-4333-8333-333333333333";
@@ -28,21 +28,22 @@ class GetCurrentReservationByChatRoomServiceTest {
 	private static final String PRODUCT_POST_UUID = "11111111-1111-4111-8111-111111111111";
 	private static final String CHAT_ROOM_ID = "67a1c2d3e4f5a6b7c8d9e0f1";
 	private static final Instant SCHEDULED_AT = Instant.parse("2026-08-31T10:10:00Z");
+	private static final String MISSING_UUID = "99999999-9999-4999-8999-999999999999";
 
 	private InMemoryReservationStore store;
-	private GetCurrentReservationByChatRoomService service;
+	private GetReservationService service;
 
 	@BeforeEach
 	void setUp() {
 		store = new InMemoryReservationStore();
-		service = new GetCurrentReservationByChatRoomService(store);
+		service = new GetReservationService(store);
 	}
 
 	@Test
 	void get_returnsConfirmedReservation() {
 		Reservation saved = store.add(confirmed());
 
-		ReservationDetailResultDto result = service.get(BUYER_UUID, CHAT_ROOM_ID).orElseThrow();
+		ReservationDetailResultDto result = service.get(BUYER_UUID, saved.getReservationUuid());
 
 		assertEquals(saved.getReservationUuid(), result.getReservationId());
 		assertEquals(CHAT_ROOM_ID, result.getChatRoomId());
@@ -51,39 +52,46 @@ class GetCurrentReservationByChatRoomServiceTest {
 	}
 
 	@Test
+	void get_returnsCanceledReservation() {
+		Reservation saved = store.add(canceled());
+
+		ReservationDetailResultDto result = service.get(BUYER_UUID, saved.getReservationUuid());
+
+		assertEquals(ReservationStatus.CANCELED, result.getStatus());
+		assertEquals(BUYER_UUID, result.getCanceledBy());
+	}
+
+	@Test
 	void get_allowsSeller() {
-		store.add(confirmed());
+		Reservation saved = store.add(confirmed());
 
-		assertTrue(service.get(SELLER_UUID, CHAT_ROOM_ID).isPresent());
-	}
+		ReservationDetailResultDto result = service.get(SELLER_UUID, saved.getReservationUuid());
 
-	@Test
-	void get_returnsEmptyWhenNone() {
-		assertTrue(service.get(BUYER_UUID, CHAT_ROOM_ID).isEmpty());
-	}
-
-	@Test
-	void get_returnsEmptyWhenOnlyCanceled() {
-		store.add(canceled());
-
-		assertTrue(service.get(BUYER_UUID, CHAT_ROOM_ID).isEmpty());
-	}
-
-	@Test
-	void get_rejectsThirdPartyWhenConfirmedExists() {
-		store.add(confirmed());
-
-		assertThrows(ReservationAccessDeniedException.class, () -> service.get(OTHER_UUID, CHAT_ROOM_ID));
+		assertEquals(saved.getReservationUuid(), result.getReservationId());
 	}
 
 	@Test
 	void get_rejectsMissingAuth() {
-		assertThrows(ReservationAuthMissingException.class, () -> service.get(null, CHAT_ROOM_ID));
+		Reservation saved = store.add(confirmed());
+
+		assertThrows(ReservationAuthMissingException.class, () -> service.get(null, saved.getReservationUuid()));
 	}
 
 	@Test
-	void get_rejectsInvalidChatRoomId() {
-		assertThrows(InvalidReservationRequestException.class, () -> service.get(BUYER_UUID, "not-a-mongo-id"));
+	void get_rejectsInvalidReservationId() {
+		assertThrows(InvalidReservationRequestException.class, () -> service.get(BUYER_UUID, "not-a-uuid"));
+	}
+
+	@Test
+	void get_rejectsNotFound() {
+		assertThrows(ReservationNotFoundException.class, () -> service.get(BUYER_UUID, MISSING_UUID));
+	}
+
+	@Test
+	void get_rejectsThirdParty() {
+		Reservation saved = store.add(confirmed());
+
+		assertThrows(ReservationAccessDeniedException.class, () -> service.get(OTHER_UUID, saved.getReservationUuid()));
 	}
 
 	private Reservation confirmed() {
@@ -155,14 +163,18 @@ class GetCurrentReservationByChatRoomServiceTest {
 
 		@Override
 		public boolean existsConfirmedByChatRoomId(String chatRoomId) {
-			return findConfirmedByChatRoomId(chatRoomId).isPresent();
+			return false;
 		}
 
 		@Override
 		public Optional<Reservation> findConfirmedByChatRoomId(String chatRoomId) {
+			return Optional.empty();
+		}
+
+		@Override
+		public Optional<Reservation> findByReservationUuid(String reservationUuid) {
 			return reservations.stream()
-					.filter(reservation -> reservation.getChatRoomId().equals(chatRoomId)
-							&& reservation.getStatus() == ReservationStatus.CONFIRMED)
+					.filter(reservation -> reservation.getReservationUuid().equals(reservationUuid))
 					.findFirst();
 		}
 
@@ -174,11 +186,6 @@ class GetCurrentReservationByChatRoomServiceTest {
 		@Override
 		public List<Reservation> findByPartyMemberUuidAndStatus(String memberUuid, ReservationStatus status) {
 			return List.of();
-		}
-
-		@Override
-		public Optional<Reservation> findByReservationUuid(String reservationUuid) {
-			return Optional.empty();
 		}
 	}
 }

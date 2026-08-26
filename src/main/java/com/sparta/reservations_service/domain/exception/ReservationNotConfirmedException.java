@@ -1,6 +1,6 @@
 package com.sparta.reservations_service.domain.exception;
 
-// CONFIRMED가 아닌 예약을 수정함
+// CANCELED 예약을 수정하려 함
 public class ReservationNotConfirmedException extends RuntimeException {
 
 	// 안정적 에러 코드

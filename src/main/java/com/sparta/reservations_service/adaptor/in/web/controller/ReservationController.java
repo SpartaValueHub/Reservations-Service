@@ -1,13 +1,19 @@
 package com.sparta.reservations_service.adaptor.in.web.controller;
 
 import com.sparta.reservations_service.adaptor.in.web.vo.CreateReservationRequestVo;
+import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationItemVo;
+import com.sparta.reservations_service.adaptor.in.web.vo.MyReservationListResponseVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.ReservationResponseVo;
 import com.sparta.reservations_service.adaptor.in.web.vo.UpdateReservationRequestVo;
 import com.sparta.reservations_service.application.port.in.CancelReservationUseCase;
 import com.sparta.reservations_service.application.port.in.CreateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.GetCurrentReservationByChatRoomUseCase;
+import com.sparta.reservations_service.application.port.in.GetMyReservationsUseCase;
+import com.sparta.reservations_service.application.port.in.GetReservationUseCase;
 import com.sparta.reservations_service.application.port.in.UpdateReservationUseCase;
 import com.sparta.reservations_service.application.port.in.dto.CreateReservationCommandDto;
+import com.sparta.reservations_service.application.port.in.dto.MyReservationItemDto;
+import com.sparta.reservations_service.application.port.in.dto.MyReservationListResultDto;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
 import com.sparta.reservations_service.application.port.in.dto.UpdateReservationCommandDto;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
@@ -22,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
@@ -34,8 +41,19 @@ public class ReservationController {
 
 	private final CreateReservationUseCase createReservationUseCase;
 	private final GetCurrentReservationByChatRoomUseCase getCurrentReservationByChatRoomUseCase;
+	private final GetMyReservationsUseCase getMyReservationsUseCase;
+	private final GetReservationUseCase getReservationUseCase;
 	private final UpdateReservationUseCase updateReservationUseCase;
 	private final CancelReservationUseCase cancelReservationUseCase;
+
+	@GetMapping("/me")
+	public ResponseEntity<MyReservationListResponseVo> getMyReservations(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@RequestParam(value = "status", required = false) String status
+	) {
+		MyReservationListResultDto resultDto = getMyReservationsUseCase.get(memberUuid, status);
+		return ResponseEntity.ok(toListVo(resultDto));
+	}
 
 	@GetMapping("/by-chat-room/{chatRoomId}")
 	public ResponseEntity<ReservationResponseVo> getCurrentReservationByChatRoom(
@@ -47,16 +65,13 @@ public class ReservationController {
 				.orElseGet(() -> ResponseEntity.noContent().build());
 	}
 
-	@PostMapping
-	public ResponseEntity<ReservationResponseVo> createReservation(
+	@GetMapping("/{reservationId}")
+	public ResponseEntity<ReservationResponseVo> getReservation(
 			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
-			@RequestBody(required = false) CreateReservationRequestVo requestVo
+			@PathVariable String reservationId
 	) {
-		if (requestVo == null) {
-			throw new InvalidReservationRequestException("요청 본문이 필요합니다.");
-		}
-		ReservationDetailResultDto resultDto = createReservationUseCase.create(toCommand(memberUuid, requestVo));
-		return ResponseEntity.status(HttpStatus.CREATED).body(toVo(resultDto));
+		ReservationDetailResultDto resultDto = getReservationUseCase.get(memberUuid, reservationId);
+		return ResponseEntity.ok(toVo(resultDto));
 	}
 
 	@PatchMapping("/{reservationId}")
@@ -79,22 +94,20 @@ public class ReservationController {
 			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
 			@PathVariable String reservationId
 	) {
-		return ResponseEntity.ok(toVo(cancelReservationUseCase.cancel(memberUuid, reservationId)));
+		ReservationDetailResultDto resultDto = cancelReservationUseCase.cancel(memberUuid, reservationId);
+		return ResponseEntity.ok(toVo(resultDto));
 	}
 
-	private CreateReservationCommandDto toCommand(String memberUuid, CreateReservationRequestVo requestVo) {
-		return CreateReservationCommandDto.builder()
-				.memberUuid(memberUuid)
-				.chatRoomId(requestVo.getChatRoomId())
-				.productPostUuid(requestVo.getProductPostUuid())
-				.buyerUuid(requestVo.getBuyerUuid())
-				.sellerUuid(requestVo.getSellerUuid())
-				.scheduledAt(requestVo.getScheduledAt())
-				.placeName(requestVo.getPlaceName())
-				.address(requestVo.getAddress())
-				.latitude(requestVo.getLatitude())
-				.longitude(requestVo.getLongitude())
-				.build();
+	@PostMapping
+	public ResponseEntity<ReservationResponseVo> createReservation(
+			@RequestHeader(value = MEMBER_UUID_HEADER, required = false) String memberUuid,
+			@RequestBody(required = false) CreateReservationRequestVo requestVo
+	) {
+		if (requestVo == null) {
+			throw new InvalidReservationRequestException("요청 본문이 필요합니다.");
+		}
+		ReservationDetailResultDto resultDto = createReservationUseCase.create(toCommand(memberUuid, requestVo));
+		return ResponseEntity.status(HttpStatus.CREATED).body(toVo(resultDto));
 	}
 
 	private UpdateReservationCommandDto toUpdateCommand(
@@ -109,6 +122,21 @@ public class ReservationController {
 				.placeName(requestVo.getPlaceName())
 				.address(requestVo.getAddress())
 				.addressSpecified(requestVo.isAddressSpecified())
+				.latitude(requestVo.getLatitude())
+				.longitude(requestVo.getLongitude())
+				.build();
+	}
+
+	private CreateReservationCommandDto toCommand(String memberUuid, CreateReservationRequestVo requestVo) {
+		return CreateReservationCommandDto.builder()
+				.memberUuid(memberUuid)
+				.chatRoomId(requestVo.getChatRoomId())
+				.productPostUuid(requestVo.getProductPostUuid())
+				.buyerUuid(requestVo.getBuyerUuid())
+				.sellerUuid(requestVo.getSellerUuid())
+				.scheduledAt(requestVo.getScheduledAt())
+				.placeName(requestVo.getPlaceName())
+				.address(requestVo.getAddress())
 				.latitude(requestVo.getLatitude())
 				.longitude(requestVo.getLongitude())
 				.build();
@@ -132,6 +160,23 @@ public class ReservationController {
 				.canceledAt(resultDto.getCanceledAt())
 				.createdAt(resultDto.getCreatedAt())
 				.updatedAt(resultDto.getUpdatedAt())
+				.build();
+	}
+
+	private MyReservationListResponseVo toListVo(MyReservationListResultDto resultDto) {
+		return MyReservationListResponseVo.builder()
+				.reservations(resultDto.getReservations().stream().map(this::toItemVo).toList())
+				.build();
+	}
+
+	private MyReservationItemVo toItemVo(MyReservationItemDto itemDto) {
+		return MyReservationItemVo.builder()
+				.reservationId(itemDto.getReservationId())
+				.chatRoomId(itemDto.getChatRoomId())
+				.productPostUuid(itemDto.getProductPostUuid())
+				.scheduledAt(itemDto.getScheduledAt())
+				.placeName(itemDto.getPlaceName())
+				.status(itemDto.getStatus())
 				.build();
 	}
 }

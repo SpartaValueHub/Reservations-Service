@@ -10,6 +10,7 @@ import com.sparta.reservations_service.domain.model.ReservationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 // reservations JPA Adapter
@@ -44,6 +45,26 @@ public class ReservationJpaAdapter implements LoadReservationPort, SaveReservati
 		}
 		return reservationJpaRepository.findByReservationUuid(reservationUuid)
 				.map(reservationJpaMapper::toDomain);
+	}
+
+	@Override
+	public List<Reservation> findByPartyMemberUuid(String memberUuid) {
+		if (memberUuid == null || memberUuid.isBlank()) {
+			return List.of();
+		}
+		return reservationJpaRepository.findByPartyMemberUuid(memberUuid).stream()
+				.map(reservationJpaMapper::toDomain)
+				.toList();
+	}
+
+	@Override
+	public List<Reservation> findByPartyMemberUuidAndStatus(String memberUuid, ReservationStatus status) {
+		if (memberUuid == null || memberUuid.isBlank() || status == null) {
+			return List.of();
+		}
+		return reservationJpaRepository.findByPartyMemberUuidAndStatus(memberUuid, status).stream()
+				.map(reservationJpaMapper::toDomain)
+				.toList();
 	}
 
 	@Override
