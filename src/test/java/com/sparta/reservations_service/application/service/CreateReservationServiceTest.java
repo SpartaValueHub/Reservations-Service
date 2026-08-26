@@ -3,6 +3,7 @@ package com.sparta.reservations_service.application.service;
 import com.sparta.reservations_service.application.port.in.dto.CreateReservationCommandDto;
 import com.sparta.reservations_service.application.port.in.dto.ReservationDetailResultDto;
 import com.sparta.reservations_service.application.port.out.LoadReservationPort;
+import com.sparta.reservations_service.application.port.out.PublishReservationEventPort;
 import com.sparta.reservations_service.application.port.out.SaveReservationPort;
 import com.sparta.reservations_service.domain.exception.CannotReserveWithSelfException;
 import com.sparta.reservations_service.domain.exception.InvalidReservationRequestException;
@@ -36,12 +37,14 @@ class CreateReservationServiceTest {
 	private static final Instant SCHEDULED_AT = Instant.parse("2026-08-31T10:10:00Z");
 
 	private InMemoryReservationStore store;
+	private RecordingPublisher publisher;
 	private CreateReservationService service;
 
 	@BeforeEach
 	void setUp() {
 		store = new InMemoryReservationStore();
-		service = new CreateReservationService(store, store);
+		publisher = new RecordingPublisher();
+		service = new CreateReservationService(store, store, publisher);
 	}
 
 	@Test
@@ -62,6 +65,10 @@ class CreateReservationServiceTest {
 		assertNull(result.getCanceledAt());
 		assertNotNull(result.getReservationId());
 		assertEquals(1, store.reservations.size());
+		assertEquals(1, publisher.published.size());
+		assertEquals(result.getReservationId(), publisher.published.get(0).getReservationUuid());
+		assertEquals(PRODUCT_POST_UUID, publisher.published.get(0).getProductPostUuid());
+		assertEquals(ReservationStatus.CONFIRMED, publisher.published.get(0).getStatus());
 	}
 
 	@Test
@@ -76,6 +83,7 @@ class CreateReservationServiceTest {
 	void create_rejectsBuyer() {
 		assertThrows(ReservationAccessDeniedException.class, () -> service.create(command(BUYER_UUID)));
 		assertEquals(0, store.reservations.size());
+		assertEquals(0, publisher.published.size());
 	}
 
 	@Test
@@ -105,6 +113,7 @@ class CreateReservationServiceTest {
 
 		assertThrows(ReservationAlreadyConfirmedException.class, () -> service.create(command(SELLER_UUID)));
 		assertEquals(1, store.reservations.size());
+		assertEquals(1, publisher.published.size());
 	}
 
 	@Test
@@ -124,6 +133,7 @@ class CreateReservationServiceTest {
 
 		assertThrows(ReservationAlreadyConfirmedException.class, () -> service.create(command(SELLER_UUID)));
 		assertEquals(1, store.reservations.size());
+		assertEquals(0, publisher.published.size());
 	}
 
 	@Test
@@ -146,6 +156,8 @@ class CreateReservationServiceTest {
 		assertEquals(PRODUCT_POST_UUID, result.getProductPostUuid());
 		assertEquals(CHAT_ROOM_ID, result.getChatRoomId());
 		assertEquals(2, store.reservations.size());
+		assertEquals(1, publisher.published.size());
+		assertEquals(PRODUCT_POST_UUID, publisher.published.get(0).getProductPostUuid());
 	}
 
 	@Test
@@ -273,6 +285,16 @@ class CreateReservationServiceTest {
 			);
 			reservations.add(persisted);
 			return persisted;
+		}
+	}
+
+	private static class RecordingPublisher implements PublishReservationEventPort {
+
+		private final List<Reservation> published = new ArrayList<>();
+
+		@Override
+		public void publishCreated(Reservation reservation) {
+			published.add(reservation);
 		}
 	}
 }
