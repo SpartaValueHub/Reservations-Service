@@ -46,11 +46,11 @@ class CancelReservationServiceTest {
 	void cancel_marksSameRowCanceled() {
 		Reservation saved = store.add(confirmed());
 
-		ReservationDetailResultDto result = service.cancel(BUYER_UUID, saved.getReservationUuid());
+		ReservationDetailResultDto result = service.cancel(SELLER_UUID, saved.getReservationUuid());
 
 		assertEquals(saved.getReservationUuid(), result.getReservationId());
 		assertEquals(ReservationStatus.CANCELED, result.getStatus());
-		assertEquals(BUYER_UUID, result.getCanceledBy());
+		assertEquals(SELLER_UUID, result.getCanceledBy());
 		assertNotNull(result.getCanceledAt());
 		assertEquals(1, store.reservations.size());
 		assertEquals(saved.getReservationId(), store.reservations.get(0).getReservationId());
@@ -58,13 +58,11 @@ class CancelReservationServiceTest {
 	}
 
 	@Test
-	void cancel_allowsSeller() {
+	void cancel_rejectsBuyer() {
 		Reservation saved = store.add(confirmed());
 
-		ReservationDetailResultDto result = service.cancel(SELLER_UUID, saved.getReservationUuid());
-
-		assertEquals(ReservationStatus.CANCELED, result.getStatus());
-		assertEquals(SELLER_UUID, result.getCanceledBy());
+		assertThrows(ReservationAccessDeniedException.class, () -> service.cancel(BUYER_UUID, saved.getReservationUuid()));
+		assertEquals(ReservationStatus.CONFIRMED, store.reservations.get(0).getStatus());
 	}
 
 	@Test
@@ -76,12 +74,12 @@ class CancelReservationServiceTest {
 
 	@Test
 	void cancel_rejectsInvalidReservationId() {
-		assertThrows(InvalidReservationRequestException.class, () -> service.cancel(BUYER_UUID, "not-a-uuid"));
+		assertThrows(InvalidReservationRequestException.class, () -> service.cancel(SELLER_UUID, "not-a-uuid"));
 	}
 
 	@Test
 	void cancel_rejectsNotFound() {
-		assertThrows(ReservationNotFoundException.class, () -> service.cancel(BUYER_UUID, MISSING_UUID));
+		assertThrows(ReservationNotFoundException.class, () -> service.cancel(SELLER_UUID, MISSING_UUID));
 	}
 
 	@Test
@@ -95,7 +93,7 @@ class CancelReservationServiceTest {
 	void cancel_rejectsAlreadyCanceled() {
 		Reservation saved = store.add(canceled());
 
-		assertThrows(ReservationAlreadyCanceledException.class, () -> service.cancel(BUYER_UUID, saved.getReservationUuid()));
+		assertThrows(ReservationAlreadyCanceledException.class, () -> service.cancel(SELLER_UUID, saved.getReservationUuid()));
 	}
 
 	private Reservation confirmed() {
@@ -109,7 +107,7 @@ class CancelReservationServiceTest {
 				null,
 				35.115,
 				129.042,
-				BUYER_UUID
+				SELLER_UUID
 		);
 	}
 
@@ -128,8 +126,8 @@ class CancelReservationServiceTest {
 				35.115,
 				129.042,
 				ReservationStatus.CANCELED,
-				BUYER_UUID,
-				BUYER_UUID,
+				SELLER_UUID,
+				SELLER_UUID,
 				now,
 				now,
 				now

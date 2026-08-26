@@ -50,8 +50,8 @@ public class CreateReservationService implements CreateReservationUseCase {
 		if (buyerUuid.equals(sellerUuid)) {
 			throw new CannotReserveWithSelfException();
 		}
-		if (!memberUuid.equals(buyerUuid) && !memberUuid.equals(sellerUuid)) {
-			throw new ReservationAccessDeniedException();
+		if (!memberUuid.equals(sellerUuid)) {
+			throw ReservationAccessDeniedException.sellerOnly();
 		}
 		if (loadReservationPort.existsConfirmedByChatRoomId(chatRoomId)) {
 			throw new ReservationAlreadyConfirmedException();
@@ -69,28 +69,7 @@ public class CreateReservationService implements CreateReservationUseCase {
 				coordinate.longitude,
 				memberUuid
 		));
-		return toResult(saved);
-	}
-
-	private ReservationDetailResultDto toResult(Reservation reservation) {
-		return ReservationDetailResultDto.builder()
-				.reservationId(reservation.getReservationUuid())
-				.chatRoomId(reservation.getChatRoomId())
-				.productPostUuid(reservation.getProductPostUuid())
-				.buyerUuid(reservation.getBuyerUuid())
-				.sellerUuid(reservation.getSellerUuid())
-				.scheduledAt(reservation.getScheduledAt())
-				.placeName(reservation.getPlaceName())
-				.address(reservation.getAddress())
-				.latitude(reservation.getLatitude())
-				.longitude(reservation.getLongitude())
-				.status(reservation.getStatus())
-				.createdBy(reservation.getCreatedBy())
-				.canceledBy(reservation.getCanceledBy())
-				.canceledAt(reservation.getCanceledAt())
-				.createdAt(reservation.getCreatedAt())
-				.updatedAt(reservation.getUpdatedAt())
-				.build();
+		return ReservationDetailResultDto.from(saved);
 	}
 
 	private String requireMemberUuid(String value) {

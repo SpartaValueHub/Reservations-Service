@@ -83,7 +83,9 @@ public class ReservationController {
 		if (requestVo == null) {
 			throw new InvalidReservationRequestException("요청 본문이 필요합니다.");
 		}
-		ReservationDetailResultDto resultDto = updateReservationUseCase.update(toUpdateCommand(memberUuid, reservationId, requestVo));
+		ReservationDetailResultDto resultDto = updateReservationUseCase.update(
+				toUpdateCommand(memberUuid, reservationId, requestVo)
+		);
 		return ResponseEntity.ok(toVo(resultDto));
 	}
 

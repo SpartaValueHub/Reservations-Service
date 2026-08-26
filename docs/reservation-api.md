@@ -27,7 +27,8 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 
 ## 도메인 규칙
 
-- 구매자와 판매자 모두 등록·수정·취소할 수 있습니다. 호출자는 Gateway `X-Member-Uuid`이며, 그 사람이 `buyerUuid` 또는 `sellerUuid`여야 합니다.
+- 조회는 구매자와 판매자 모두 할 수 있습니다. 호출자는 Gateway `X-Member-Uuid`이며, 그 사람이 `buyerUuid` 또는 `sellerUuid`여야 합니다.
+- 등록·수정·취소는 **판매자만** 할 수 있습니다. 호출자가 요청/저장값의 `sellerUuid`와 같아야 합니다. 채팅방 상세 `GET /api/v1/chat/rooms/{roomId}`의 `seller.memberUuid`가 이 기준입니다.
 - 채팅방마다 `CONFIRMED` 예약은 최대 1건입니다.
 - 취소는 행을 삭제하지 않습니다. `status`를 `CANCELED`로 바꿉니다. `deleted_at`은 없습니다.
 - 취소 후 다시 예약하면 새 행을 INSERT 합니다. 취소된 행을 `CONFIRMED`로 되돌리지 않습니다.
@@ -127,7 +128,7 @@ Reservations-Service가 채팅 약속(거래 예약)의 원본을 소유합니�
 
 ### Summary
 
-채팅 오른쪽 패널에서 날짜·시간·장소를 정해 예약을 만듭니다. 구매자·판매자 모두 호출할 수 있습니다. Chat·상품 서비스는 조회하지 않습니다. `placeName`, `latitude`, `longitude`는 필수입니다. 백엔드는 지오코딩하지 않습니다.
+채팅 오른쪽 패널에서 날짜·시간·장소를 정해 예약을 만듭니다. **판매자만** 호출할 수 있습니다. 프론트는 채팅방 상세의 `seller.memberUuid`와 로그인 UUID를 비교해 예약하기를 노출합니다. Chat·상품 서비스는 조회하지 않습니다. `placeName`, `latitude`, `longitude`는 필수입니다. 백엔드는 지오코딩하지 않습니다.
 
 ### Method · Path
 
@@ -159,7 +160,7 @@ Body
 | latitude        | number | O    | 위도. longitude와 함께 필수 |
 | longitude       | number | O    | 경도. latitude와 함께 필수 |
 
-호출자는 `buyerUuid` 또는 `sellerUuid`여야 합니다.
+호출자는 `sellerUuid`여야 합니다. 채팅방 화면의 `seller.memberUuid`를 그대로 넣습니다.
 
 ```json
 {
@@ -186,7 +187,7 @@ Body
 | 401 | RESERVATION_AUTH_MISSING | X-Member-Uuid 헤더 없음 |
 | 400 | INVALID_REQUEST | 필수 필드 없음, 좌표 없음, 좌표 한쪽만 있음, UUID/시각 형식 오류 |
 | 400 | CANNOT_RESERVE_WITH_SELF | buyerUuid와 sellerUuid가 동일 |
-| 403 | RESERVATION_ACCESS_DENIED | 호출자가 buyer도 seller도 아님 |
+| 403 | RESERVATION_ACCESS_DENIED | 호출자가 seller가 아님 |
 | 409 | RESERVATION_ALREADY_CONFIRMED | 해당 채팅방에 CONFIRMED 예약이 이미 있음 |
 
 ---
@@ -366,7 +367,7 @@ Path
 
 ### Summary
 
-현재 예약의 날짜·시간·장소만 바꿉니다. 같은 행을 업데이트합니다. 새 행을 만들지 않습니다. 좌표를 보내면 `latitude`와 `longitude`를 함께 보냅니다. 등록된 좌표는 제거하지 않습니다.
+현재 예약의 날짜·시간·장소만 바꿉니다. **판매자만** 호출할 수 있습니다. 같은 행을 업데이트합니다. 새 행을 만들지 않습니다. 좌표를 보내면 `latitude`와 `longitude`를 함께 보냅니다. 등록된 좌표는 제거하지 않습니다.
 
 ### Method · Path
 
@@ -421,7 +422,7 @@ Body — 보낸 필드만 변경합니다. 비어 있으면 400입니다.
 | 401 | RESERVATION_AUTH_MISSING | X-Member-Uuid 헤더 없음 |
 | 400 | INVALID_REQUEST | 본문 없음, 좌표 한쪽만, 필드 형식 오류 |
 | 404 | RESERVATION_NOT_FOUND | 예약 없음 |
-| 403 | RESERVATION_ACCESS_DENIED | 호출자가 당사자가 아님 |
+| 403 | RESERVATION_ACCESS_DENIED | 호출자가 seller가 아님 |
 | 409 | RESERVATION_NOT_CONFIRMED | CANCELED 예약을 수정함 |
 
 ---
@@ -432,7 +433,7 @@ Body — 보낸 필드만 변경합니다. 비어 있으면 400입니다.
 
 ### Summary
 
-HTTP `DELETE`이지만 행은 남깁니다. `status`를 `CANCELED`로 바꾸고 `canceledBy`·`canceledAt`을 기록합니다. 이후 현재 예약 조회는 `204`입니다.
+HTTP `DELETE`이지만 행은 남깁니다. **판매자만** 호출할 수 있습니다. `status`를 `CANCELED`로 바꾸고 `canceledBy`·`canceledAt`을 기록합니다. 이후 현재 예약 조회는 `204`입니다.
 
 ### Method · Path
 
@@ -469,7 +470,7 @@ Body 없음.
 | 401 | RESERVATION_AUTH_MISSING | X-Member-Uuid 헤더 없음 |
 | 400 | INVALID_REQUEST | reservationId 형식 오류 |
 | 404 | RESERVATION_NOT_FOUND | 예약 없음 |
-| 403 | RESERVATION_ACCESS_DENIED | 호출자가 당사자가 아님 |
+| 403 | RESERVATION_ACCESS_DENIED | 호출자가 seller가 아님 |
 | 409 | RESERVATION_ALREADY_CANCELED | 이미 CANCELED |
 
 ---
@@ -484,7 +485,9 @@ GET /api/v1/reservations/by-chat-room/{roomId}
 GET /api/v1/chat/rooms/{roomId}/messages
 ```
 
-예약하기: `POST /api/v1/reservations` → 패널은 201 바디로 채움. `placeName`·`latitude`·`longitude` 필수  
+채팅방 상세의 `seller.memberUuid`가 로그인 UUID와 같으면 예약하기·수정·취소를 노출합니다. 구매자는 조회만 합니다.
+
+예약하기(판매자): `POST /api/v1/reservations` → 패널은 201 바디로 채움. `sellerUuid`는 `seller.memberUuid`. `placeName`·`latitude`·`longitude` 필수  
 목록 카드: `GET /api/v1/reservations/me` → `chatRoomId`로 채팅 이동  
-수정: `PATCH /api/v1/reservations/{reservationId}`  
-취소: `DELETE /api/v1/reservations/{reservationId}` → 현재 예약은 204
+수정(판매자): `PATCH /api/v1/reservations/{reservationId}`  
+취소(판매자): `DELETE /api/v1/reservations/{reservationId}` → 현재 예약은 204

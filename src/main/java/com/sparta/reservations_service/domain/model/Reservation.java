@@ -161,6 +161,10 @@ public class Reservation {
 		return buyerUuid.equals(memberUuid) || sellerUuid.equals(memberUuid);
 	}
 
+	public boolean isSeller(String memberUuid) {
+		return sellerUuid.equals(memberUuid);
+	}
+
 	// 같은 행의 일시·장소만 바꾼다. CANCELED는 수정 불가
 	public Reservation updateMeeting(
 			Instant scheduledAt,

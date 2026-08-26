@@ -31,32 +31,11 @@ public class CancelReservationService implements CancelReservationUseCase {
 		String reservationUuid = requireReservationUuid(reservationId);
 		Reservation reservation = loadReservationPort.findByReservationUuid(reservationUuid)
 				.orElseThrow(ReservationNotFoundException::new);
-		if (!reservation.isParty(actorUuid)) {
-			throw new ReservationAccessDeniedException();
+		if (!reservation.isSeller(actorUuid)) {
+			throw ReservationAccessDeniedException.sellerOnly();
 		}
 		Reservation saved = saveReservationPort.save(reservation.cancel(actorUuid));
-		return toResult(saved);
-	}
-
-	private ReservationDetailResultDto toResult(Reservation reservation) {
-		return ReservationDetailResultDto.builder()
-				.reservationId(reservation.getReservationUuid())
-				.chatRoomId(reservation.getChatRoomId())
-				.productPostUuid(reservation.getProductPostUuid())
-				.buyerUuid(reservation.getBuyerUuid())
-				.sellerUuid(reservation.getSellerUuid())
-				.scheduledAt(reservation.getScheduledAt())
-				.placeName(reservation.getPlaceName())
-				.address(reservation.getAddress())
-				.latitude(reservation.getLatitude())
-				.longitude(reservation.getLongitude())
-				.status(reservation.getStatus())
-				.createdBy(reservation.getCreatedBy())
-				.canceledBy(reservation.getCanceledBy())
-				.canceledAt(reservation.getCanceledAt())
-				.createdAt(reservation.getCreatedAt())
-				.updatedAt(reservation.getUpdatedAt())
-				.build();
+		return ReservationDetailResultDto.from(saved);
 	}
 
 	private String requireMemberUuid(String value) {

@@ -49,7 +49,7 @@ class UpdateReservationServiceTest {
 		Reservation saved = store.add(confirmed());
 
 		ReservationDetailResultDto result = service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(saved.getReservationUuid())
 				.scheduledAt(NEW_SCHEDULED_AT)
 				.placeName("해동병원 정문")
@@ -69,25 +69,11 @@ class UpdateReservationServiceTest {
 	}
 
 	@Test
-	void update_allowsSeller() {
-		Reservation saved = store.add(confirmed());
-
-		ReservationDetailResultDto result = service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(SELLER_UUID)
-				.reservationId(saved.getReservationUuid())
-				.placeName("해동병원 정문")
-				.build());
-
-		assertEquals("해동병원 정문", result.getPlaceName());
-		assertEquals(SCHEDULED_AT, result.getScheduledAt());
-	}
-
-	@Test
 	void update_keepsOmittedFields() {
 		Reservation saved = store.add(withAddress());
 
 		ReservationDetailResultDto result = service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(saved.getReservationUuid())
 				.placeName("해동병원 정문")
 				.build());
@@ -104,7 +90,7 @@ class UpdateReservationServiceTest {
 		Reservation saved = store.add(withAddress());
 
 		ReservationDetailResultDto result = service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(saved.getReservationUuid())
 				.address(null)
 				.addressSpecified(true)
@@ -115,11 +101,23 @@ class UpdateReservationServiceTest {
 	}
 
 	@Test
+	void update_rejectsBuyer() {
+		Reservation saved = store.add(confirmed());
+
+		assertThrows(ReservationAccessDeniedException.class, () -> service.update(UpdateReservationCommandDto.builder()
+				.memberUuid(BUYER_UUID)
+				.reservationId(saved.getReservationUuid())
+				.placeName("해동병원 정문")
+				.build()));
+		assertEquals("해동병원 앞", store.reservations.get(0).getPlaceName());
+	}
+
+	@Test
 	void update_rejectsEmptyPatch() {
 		Reservation saved = store.add(confirmed());
 
 		assertThrows(InvalidReservationRequestException.class, () -> service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(saved.getReservationUuid())
 				.build()));
 	}
@@ -129,7 +127,7 @@ class UpdateReservationServiceTest {
 		Reservation saved = store.add(confirmed());
 
 		assertThrows(InvalidReservationRequestException.class, () -> service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(saved.getReservationUuid())
 				.latitude(35.12)
 				.build()));
@@ -140,7 +138,7 @@ class UpdateReservationServiceTest {
 		Reservation saved = store.add(confirmed());
 
 		assertThrows(InvalidReservationRequestException.class, () -> service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(saved.getReservationUuid())
 				.placeName("  ")
 				.build()));
@@ -159,7 +157,7 @@ class UpdateReservationServiceTest {
 	@Test
 	void update_rejectsInvalidReservationId() {
 		assertThrows(InvalidReservationRequestException.class, () -> service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId("not-a-uuid")
 				.placeName("해동병원 정문")
 				.build()));
@@ -168,7 +166,7 @@ class UpdateReservationServiceTest {
 	@Test
 	void update_rejectsNotFound() {
 		assertThrows(ReservationNotFoundException.class, () -> service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(MISSING_UUID)
 				.placeName("해동병원 정문")
 				.build()));
@@ -190,7 +188,7 @@ class UpdateReservationServiceTest {
 		Reservation saved = store.add(canceled());
 
 		assertThrows(ReservationNotConfirmedException.class, () -> service.update(UpdateReservationCommandDto.builder()
-				.memberUuid(BUYER_UUID)
+				.memberUuid(SELLER_UUID)
 				.reservationId(saved.getReservationUuid())
 				.placeName("해동병원 정문")
 				.build()));
@@ -207,7 +205,7 @@ class UpdateReservationServiceTest {
 				null,
 				35.115,
 				129.042,
-				BUYER_UUID
+				SELLER_UUID
 		);
 	}
 
@@ -222,7 +220,7 @@ class UpdateReservationServiceTest {
 				"부산 영도구",
 				35.115,
 				129.042,
-				BUYER_UUID
+				SELLER_UUID
 		);
 	}
 
@@ -241,8 +239,8 @@ class UpdateReservationServiceTest {
 				35.115,
 				129.042,
 				ReservationStatus.CANCELED,
-				BUYER_UUID,
-				BUYER_UUID,
+				SELLER_UUID,
+				SELLER_UUID,
 				now,
 				now,
 				now

@@ -44,7 +44,7 @@ class CreateReservationServiceTest {
 
 	@Test
 	void create_savesConfirmedReservation() {
-		ReservationDetailResultDto result = service.create(command(BUYER_UUID));
+		ReservationDetailResultDto result = service.create(command(SELLER_UUID));
 
 		assertEquals(ReservationStatus.CONFIRMED, result.getStatus());
 		assertEquals(CHAT_ROOM_ID, result.getChatRoomId());
@@ -55,7 +55,7 @@ class CreateReservationServiceTest {
 		assertEquals("해동병원 앞", result.getPlaceName());
 		assertEquals(35.115, result.getLatitude());
 		assertEquals(129.042, result.getLongitude());
-		assertEquals(BUYER_UUID, result.getCreatedBy());
+		assertEquals(SELLER_UUID, result.getCreatedBy());
 		assertNull(result.getCanceledBy());
 		assertNull(result.getCanceledAt());
 		assertNotNull(result.getReservationId());
@@ -71,13 +71,19 @@ class CreateReservationServiceTest {
 	}
 
 	@Test
+	void create_rejectsBuyer() {
+		assertThrows(ReservationAccessDeniedException.class, () -> service.create(command(BUYER_UUID)));
+		assertEquals(0, store.reservations.size());
+	}
+
+	@Test
 	void create_rejectsMissingAuth() {
 		assertThrows(ReservationAuthMissingException.class, () -> service.create(command(null)));
 	}
 
 	@Test
 	void create_rejectsWhenBuyerEqualsSeller() {
-		CreateReservationCommandDto command = command(BUYER_UUID).toBuilder()
+		CreateReservationCommandDto command = command(SELLER_UUID).toBuilder()
 				.sellerUuid(BUYER_UUID)
 				.build();
 
@@ -93,7 +99,7 @@ class CreateReservationServiceTest {
 
 	@Test
 	void create_rejectsWhenConfirmedAlreadyExists() {
-		service.create(command(BUYER_UUID));
+		service.create(command(SELLER_UUID));
 
 		assertThrows(ReservationAlreadyConfirmedException.class, () -> service.create(command(SELLER_UUID)));
 		assertEquals(1, store.reservations.size());
@@ -101,7 +107,7 @@ class CreateReservationServiceTest {
 
 	@Test
 	void create_rejectsPartialCoordinates() {
-		CreateReservationCommandDto command = command(BUYER_UUID).toBuilder()
+		CreateReservationCommandDto command = command(SELLER_UUID).toBuilder()
 				.longitude(null)
 				.build();
 
@@ -121,7 +127,7 @@ class CreateReservationServiceTest {
 
 	@Test
 	void create_rejectsBlankPlaceName() {
-		CreateReservationCommandDto command = command(BUYER_UUID).toBuilder()
+		CreateReservationCommandDto command = command(SELLER_UUID).toBuilder()
 				.placeName("  ")
 				.build();
 
@@ -130,7 +136,7 @@ class CreateReservationServiceTest {
 
 	@Test
 	void create_rejectsInvalidChatRoomId() {
-		CreateReservationCommandDto command = command(BUYER_UUID).toBuilder()
+		CreateReservationCommandDto command = command(SELLER_UUID).toBuilder()
 				.chatRoomId("not-a-mongo-id")
 				.build();
 
